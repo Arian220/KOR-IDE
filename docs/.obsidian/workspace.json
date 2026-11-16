@@ -4,11 +4,11 @@
     "type": "split",
     "children": [
       {
-        "id": "40dc85cdd08d2641",
+        "id": "907e64d918f9249c",
         "type": "tabs",
         "children": [
           {
-            "id": "04ea7e0ee6431062",
+            "id": "f3fa04607d36c241",
             "type": "leaf",
             "state": {
               "type": "markdown",
@@ -99,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "Design System.md",
+                "file": "Convenciones y workflow.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -118,8 +118,8 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "Entorno de desarrollo.md",
-                "linksCollapsed": false,
+                "file": "Convenciones y workflow.md",
+                "linksCollapsed": true,
                 "unlinkedCollapsed": true
               },
               "icon": "links-going-out",
@@ -161,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "Design System.md",
+                "file": "Convenciones y workflow.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -176,14 +176,14 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "Design System.md"
+                "file": "Convenciones y workflow.md"
               },
               "icon": "lucide-info",
               "title": "Propiedades del archivo"
             }
           }
         ],
-        "currentTab": 1
+        "currentTab": 5
       }
     ],
     "direction": "horizontal",
@@ -201,10 +201,16 @@
       "bases:Crear nueva base": false
     }
   },
-  "active": "04ea7e0ee6431062",
+  "active": "f3fa04607d36c241",
   "lastOpenFiles": [
-    "Entorno de desarrollo.md",
     "PLAN_MIGRACION_RUST.md",
+    "Seguridad.md",
+    "img/pantallaprincipal.svg",
+    "img",
+    "Requisitos.md",
+    "Design System.md",
+    "Convenciones y workflow.md",
+    "Entorno de desarrollo.md",
     "Sin título.canvas",
     "Decisiones de arquitectura.md",
     "Modelo de estado y datos.md",
@@ -212,16 +218,12 @@
     "Sin título.md",
     "Sin título.base",
     "UI y UX.md",
-    "Design System.md",
-    "Convenciones y workflow.md",
     "Contratos Tauri.md",
     "Estructura del proyecto.md",
     "Estrategia de pruebas.md",
     "Arquitectura.md",
     "Glosario.md",
     "Distribución.md",
-    "Seguridad.md",
-    "Requisitos.md",
     "PREGUNTAS_ARQUITECTURA.md",
     "00 - Inicio.md",
     "Bienvenido.md"

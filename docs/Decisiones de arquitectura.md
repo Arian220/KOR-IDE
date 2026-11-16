@@ -161,6 +161,27 @@ responsable humano el 2026-11-15 y se incorporan al cuerpo de decisiones.
   salidas de CLI y pruebas manuales cuando haya hardware.
 - **Consecuencias:** el catálogo de placas depende de los cores instalados.
 
+## ADR-016 — Header tipo VS Code y terminal inferior
+
+- **Estado:** Aceptada
+- **Contexto:** la pantalla principal evoluciona a partir de
+  `docs/img/pantallaprincipal.svg`. Se pide eliminar la barra de título nativa,
+  agrupar la identidad y el menú en un header propio, mover las acciones a la
+  cabecera del editor y añadir una terminal al pie del editor.
+- **Decisión:** la ventana Tauri usa `decorations: false`; el header custom
+  incluye logotipo, menús (Archivo, Editar, Placas, Ejecutar, Terminal,
+  Ventana y Acerca de), selector de tema y controles de ventana. Las acciones
+  Detectar/Compilar/Subir/Cancelar viven a la derecha de las pestañas. La
+  terminal sustituye a la consola embebida y permanece visible bajo el editor.
+  Las barras de memoria se mueven al pie del panel izquierdo y permanecen
+  visibles aunque aún no haya datos del CLI.
+- **Consecuencias:** el header es la zona de arrastre y requiere la capacidad
+  `core:window:allow-start-dragging`; los controles de ventana necesitan
+  `core:window:allow-minimize`, `allow-toggle-maximize` y `allow-close`. El
+  respaldo Electron usa `frame: false` e IPC temporal. Se actualizan
+  [[UI y UX]], [[Design System]] y [[Estructura del proyecto]].
+
+
 ---
 
 ## Decisiones confirmadas (antes pendientes)
@@ -171,7 +192,7 @@ Confirmadas por el responsable humano el 2026-11-15. Se consideran cerradas.
 |---|---|---|
 | P-01 | Rutas de datos | Usar `app_data_dir()` (ADR-005). |
 | P-02 | «Borrar al finalizar» (Q27) | La salida se limpia al iniciar una nueva operación, no al terminar; se conserva el resultado para revisión. |
-| P-03 | Barras Flash/SRAM (Q22) | Mostrarlas cuando el CLI reporte datos; no bloquean la compilación. |
+| P-03 | Barras Flash/SRAM (Q22) | Mantenerlas visibles en el panel izquierdo; se actualizan cuando el CLI reporte datos y no bloquean la compilación. |
 | P-04 | macOS mínimo | Soportar macOS 12 en adelante. |
 | P-05 | `.dmg` sin notarizar | Aceptar el aviso de Gatekeeper y documentarlo. |
 | P-06 | Alcance de cores/librerías en v1 | Instalar y listar; no resolver conflictos de versiones. |

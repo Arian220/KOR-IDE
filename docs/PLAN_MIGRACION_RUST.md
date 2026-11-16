@@ -94,6 +94,9 @@ no depende directamente de `window.api` fuera de `src/api`.
 - Implementar pestañas, autoguardado y persistencia (RF-04, RF-05, RF-06).
 - Aplicar `design-system` para tokens y tema claro/oscuro (RF-02, Q35).
 - Aplicar `make-interfaces-feel-better` para hit areas, transiciones y foco.
+- Rediseñar la pantalla principal según `docs/img/pantallaprincipal.svg`:
+  header tipo VS Code sin barra nativa, acciones en el editor y terminal
+  inferior (ADR-016).
 - No añadir funciones nuevas fuera de las acordadas.
 
 **Criterio de salida:** paridad visual y funcional con el IDE actual; la UI
@@ -183,7 +186,7 @@ activo, en Windows, macOS y Linux.
 |---|---|---|
 | 0. Documentación | Completada | Baúl en `docs/`; P-01 a P-10 confirmadas. |
 | 1. Workspace | Completada | pnpm; Vite 8 + Vue 3.5 + TS; CodeMirror local; UI extraída a `src/`; adaptador `src/api`; SVG en `src/assets`; `temp_sketch/` retirado; `package-lock.json` eliminado. |
-| 2. UI Vue | Completada | Componentes de acción, pestañas, selector de placa, consola, memoria, toasts y estado; autoguardado y cursor con adaptador temporal `localStorage`; temas claro/oscuro/sistema. |
+| 2. UI Vue | Completada | Componentes de acción, pestañas, selector de placa, terminal, memoria, toasts y estado; header tipo VS Code sin barra nativa; autoguardado y cursor con adaptador temporal `localStorage`; temas claro/oscuro/sistema. |
 | 3. Backend Rust/Tauri | En curso | Scaffold Tauri, `AppError`/DTOs, proceso sin shell, boards/compile/upload/cancel, config, CLI y sketches; 19 tests, clippy/fmt y smoke Tauri. Pendiente installer, cores/librerías y `jobs.rs` opcional. |
 | 4. Integración | En curso | `invoke`/`Channel` reales, estado CLI, compilar/subir/cancelar, sketch gestionado y errores tipados. Pendiente diagnósticos con enlace a línea, opciones avanzadas de carga, UI de sketches/cores/librerías y verificación en 3 SO. |
 | 5. Pruebas | Pendiente | Cobertura 75 %. |

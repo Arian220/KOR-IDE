@@ -7,13 +7,16 @@ import ConsoleOutput from '@/components/console/ConsoleOutput.vue'
 import ArduinoUnoSvg from '@/components/diagram/ArduinoUnoSvg.vue'
 import CodeEditor from '@/components/editor/CodeEditor.vue'
 import EditorTabs from '@/components/editor/EditorTabs.vue'
+import AppMenuBar from '@/components/layout/AppMenuBar.vue'
 import MemoryBars from '@/components/memory/MemoryBars.vue'
 import StatusBar from '@/components/status/StatusBar.vue'
 import { useArduino } from '@/composables/useArduino'
 import { useDiagram } from '@/composables/useDiagram'
 import { useEditor } from '@/composables/useEditor'
 import { useTheme } from '@/composables/useTheme'
-import type { ThemeMode } from '@/types/app'
+import { useToast } from '@/composables/useToast'
+import { useWindowControls } from '@/composables/useWindowControls'
+import type { AppMenuDefinition } from '@/types/app'
 import type { PinFunction } from '@/types/contract'
 
 const { estadoPines, generatedCode, setPin } = useDiagram()
@@ -40,10 +43,8 @@ const {
   boardError,
   status,
   statusKind,
-  memoryVisible,
   memoryError,
   memory,
-  consoleVisible,
   consoleText,
   consoleVariant,
   compilar,
@@ -53,8 +54,74 @@ const {
   setSelectedPort,
   clearConsole,
 } = useArduino()
+const { show: showToast } = useToast()
+const windowControls = useWindowControls()
 
 const editorRef = ref<{ focus: () => void } | null>(null)
+const editorTabsRef = ref<{ startRenameActive: () => void } | null>(null)
+
+const menus = computed<AppMenuDefinition[]>(() => [
+  {
+    id: 'file',
+    label: 'Archivo',
+    items: [
+      { id: 'file.new', label: 'Nueva pestaña' },
+      { id: 'file.close', label: 'Cerrar pestaña', disabled: tabs.value.length <= 1 },
+      { separator: true },
+      { id: 'file.exit', label: 'Salir' },
+    ],
+  },
+  {
+    id: 'edit',
+    label: 'Editar',
+    items: [
+      { id: 'edit.rename', label: 'Renombrar pestaña' },
+      { id: 'edit.copy', label: 'Copiar código', disabled: editorText.value.length === 0 },
+    ],
+  },
+  {
+    id: 'boards',
+    label: 'Placas',
+    items: [
+      { id: 'boards.detect', label: 'Detectar placas', disabled: isBusy.value },
+      { id: 'boards.upload', label: 'Subir a la placa', disabled: isBusy.value },
+    ],
+  },
+  {
+    id: 'run',
+    label: 'Ejecutar',
+    items: [
+      { id: 'run.compile', label: 'Compilar', disabled: isBusy.value },
+      { id: 'run.cancel', label: 'Cancelar operación', disabled: !canCancel.value },
+    ],
+  },
+  {
+    id: 'terminal',
+    label: 'Terminal',
+    items: [
+      { id: 'terminal.copy', label: 'Copiar salida', disabled: consoleText.value.length === 0 },
+      { id: 'terminal.clear', label: 'Limpiar terminal', disabled: consoleText.value.length === 0 },
+    ],
+  },
+  {
+    id: 'window',
+    label: 'Ventana',
+    items: [
+      { id: 'window.theme.system', label: 'Tema del sistema', checked: theme.value === 'system' },
+      { id: 'window.theme.dark', label: 'Tema oscuro', checked: theme.value === 'dark' },
+      { id: 'window.theme.light', label: 'Tema claro', checked: theme.value === 'light' },
+      { separator: true },
+      { id: 'window.minimize', label: 'Minimizar' },
+      { id: 'window.maximize', label: 'Maximizar o restaurar' },
+      { id: 'window.close', label: 'Cerrar ventana' },
+    ],
+  },
+  {
+    id: 'about',
+    label: 'Acerca de',
+    items: [{ id: 'about.show', label: 'Información de KOR' }],
+  },
+])
 
 const statusDetail = computed(() => {
   const count = tabs.value.length
@@ -70,8 +137,97 @@ function onPinChange(payload: { pin: string; func: PinFunction | null }) {
   setPin(payload.pin, payload.func)
 }
 
-function onThemeChange(event: Event) {
-  setTheme((event.target as HTMLSelectElement).value as ThemeMode)
+function closeActiveTab() {
+  const tab = activeTab.value
+  if (!tab) return
+  if (tabs.value.length <= 1) {
+    showToast('No se puede cerrar la última pestaña.', 'info')
+    return
+  }
+  if (tab.content.trim().length > 0) {
+    const confirmed = window.confirm(`¿Cerrar "${tab.name}"? El contenido se descartará.`)
+    if (!confirmed) return
+  }
+  closeTab(tab.id)
+}
+
+async function copyEditor() {
+  try {
+    await navigator.clipboard.writeText(editorText.value)
+    showToast('Código copiado.', 'success')
+  } catch {
+    showToast('No se pudo copiar el código.', 'error')
+  }
+}
+
+async function copyTerminal() {
+  try {
+    await navigator.clipboard.writeText(consoleText.value)
+    showToast('Salida de la terminal copiada.', 'success')
+  } catch {
+    showToast('No se pudo copiar la salida.', 'error')
+  }
+}
+
+function onCommand(id: string) {
+  switch (id) {
+    case 'file.new':
+      void onAddTab()
+      break
+    case 'file.close':
+      closeActiveTab()
+      break
+    case 'file.exit':
+      windowControls.close()
+      break
+    case 'edit.rename':
+      editorTabsRef.value?.startRenameActive()
+      break
+    case 'edit.copy':
+      void copyEditor()
+      break
+    case 'boards.detect':
+      onDetect()
+      break
+    case 'boards.upload':
+      onUpload()
+      break
+    case 'run.compile':
+      onCompile()
+      break
+    case 'run.cancel':
+      onCancel()
+      break
+    case 'terminal.copy':
+      void copyTerminal()
+      break
+    case 'terminal.clear':
+      clearConsole()
+      break
+    case 'window.theme.system':
+      setTheme('system')
+      break
+    case 'window.theme.dark':
+      setTheme('dark')
+      break
+    case 'window.theme.light':
+      setTheme('light')
+      break
+    case 'window.minimize':
+      windowControls.minimize()
+      break
+    case 'window.maximize':
+      windowControls.toggleMaximize()
+      break
+    case 'window.close':
+      windowControls.close()
+      break
+    case 'about.show':
+      showToast('KOR 0.1.0 — IDE visual para Arduino.', 'info')
+      break
+    default:
+      break
+  }
 }
 
 async function onAddTab() {
@@ -107,34 +263,12 @@ function onCancel() {
 
 <template>
   <div class="ide">
-    <header class="ide__header">
-      <div class="ide__brand">
-        <h1 class="ide__title">KOR</h1>
-        <span class="ide__subtitle">Generador Visual + Compilador</span>
-      </div>
-
-      <div class="ide__header-actions">
-        <label class="theme-control">
-          <span>Tema</span>
-          <select :value="theme" aria-label="Tema de la interfaz" @change="onThemeChange">
-            <option value="system">Sistema</option>
-            <option value="dark">Oscuro</option>
-            <option value="light">Claro</option>
-          </select>
-        </label>
-
-        <ActionBar
-          :busy-action="busyAction"
-          :upload-port="selectedPort"
-          :is-busy="isBusy"
-          :can-cancel="canCancel"
-          @detect="onDetect"
-          @compile="onCompile"
-          @upload="onUpload"
-          @cancel="onCancel"
-        />
-      </div>
-    </header>
+    <AppMenuBar
+      :menus="menus"
+      :theme="theme"
+      @command="onCommand"
+      @update:theme="setTheme"
+    />
 
     <div class="ide__layout">
       <section class="panel panel--left">
@@ -143,17 +277,34 @@ function onCancel() {
           <span class="panel__hint">(Rueda del ratón para zoom)</span>
         </h2>
         <ArduinoUnoSvg :pin-states="estadoPines" @change="onPinChange" />
+
+        <MemoryBars :flash="memory.flash" :sram="memory.sram" :error="memoryError" />
       </section>
 
       <section class="panel panel--right">
-        <EditorTabs
-          :tabs="tabs"
-          :active-id="activeTabId"
-          @select="selectTab"
-          @add="onAddTab"
-          @close="onCloseTab"
-          @rename="onRenameTab"
-        />
+        <div class="editor-top">
+          <EditorTabs
+            ref="editorTabsRef"
+            :tabs="tabs"
+            :active-id="activeTabId"
+            @select="selectTab"
+            @add="onAddTab"
+            @close="onCloseTab"
+            @rename="onRenameTab"
+          />
+
+          <ActionBar
+            class="editor-top__actions"
+            :busy-action="busyAction"
+            :upload-port="selectedPort"
+            :is-busy="isBusy"
+            :can-cancel="canCancel"
+            @detect="onDetect"
+            @compile="onCompile"
+            @upload="onUpload"
+            @cancel="onCancel"
+          />
+        </div>
 
         <BoardSelector
           :boards="boards"
@@ -164,20 +315,6 @@ function onCancel() {
           @update:selected-port="setSelectedPort"
         />
 
-        <MemoryBars
-          :visible="memoryVisible"
-          :flash="memory.flash"
-          :sram="memory.sram"
-          :error="memoryError"
-        >
-          <ConsoleOutput
-            :visible="consoleVisible"
-            :text="consoleText"
-            :variant="consoleVariant"
-            @clear="clearConsole"
-          />
-        </MemoryBars>
-
         <CodeEditor
           v-if="activeTab"
           ref="editorRef"
@@ -186,6 +323,12 @@ function onCancel() {
           :theme="resolvedTheme"
           :cursor="activeTab.cursor"
           @update:cursor="setCursor"
+        />
+
+        <ConsoleOutput
+          :text="consoleText"
+          :variant="consoleVariant"
+          @clear="clearConsole"
         />
       </section>
     </div>
@@ -201,65 +344,6 @@ function onCancel() {
   flex-direction: column;
   height: 100vh;
   background-color: var(--kor-bg);
-}
-
-.ide__header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--kor-space-4);
-  padding: var(--kor-space-2) var(--kor-space-5);
-  background-color: var(--kor-surface);
-  border-bottom: 1px solid var(--kor-surface-3);
-}
-
-.ide__brand {
-  display: flex;
-  align-items: baseline;
-  gap: var(--kor-space-3);
-  min-width: 0;
-}
-
-.ide__title {
-  margin: 0;
-  font-size: var(--kor-text-xl);
-  font-weight: var(--kor-weight-bold);
-  letter-spacing: 0.02em;
-}
-
-.ide__subtitle {
-  color: var(--kor-text-muted);
-  font-size: var(--kor-text-sm);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.ide__header-actions {
-  display: flex;
-  align-items: center;
-  gap: var(--kor-space-4);
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.theme-control {
-  display: flex;
-  align-items: center;
-  gap: var(--kor-space-2);
-  color: var(--kor-text-muted);
-  font-size: var(--kor-text-sm);
-  white-space: nowrap;
-}
-
-.theme-control select {
-  height: 32px;
-  padding: 0 var(--kor-space-2);
-  color: var(--kor-text);
-  background-color: var(--kor-surface-2);
-  border: 1px solid var(--kor-border);
-  border-radius: var(--kor-radius-md);
-  cursor: pointer;
 }
 
 .ide__layout {
@@ -287,6 +371,23 @@ function onCancel() {
 .panel--right {
   flex: 1;
   min-width: 0;
+  min-height: 0;
+}
+
+.editor-top {
+  display: flex;
+  align-items: stretch;
+  flex: none;
+  min-height: calc(var(--kor-titlebar-height) - 1px);
+  background-color: var(--kor-surface-2);
+  border-bottom: 1px solid var(--kor-surface-3);
+}
+
+.editor-top :deep(.action-bar) {
+  align-items: center;
+  flex: none;
+  flex-wrap: nowrap;
+  padding: 0 var(--kor-space-2);
 }
 
 .panel__header {
@@ -302,12 +403,6 @@ function onCancel() {
   color: var(--kor-text-muted);
   font-size: var(--kor-text-xs);
   font-weight: var(--kor-weight-normal);
-}
-
-@media (max-width: 1100px) {
-  .ide__subtitle {
-    display: none;
-  }
 }
 
 @media (max-width: 900px) {

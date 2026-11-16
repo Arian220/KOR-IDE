@@ -4,7 +4,6 @@ import type { MemoryUsage } from '@/types/contract'
 
 const props = withDefaults(
   defineProps<{
-    visible: boolean
     flash: MemoryUsage | null
     sram: MemoryUsage | null
     error?: boolean
@@ -35,7 +34,7 @@ const sramStyle = computed(() => fillStyle(props.sram, 'var(--kor-accent)'))
 </script>
 
 <template>
-  <div v-show="visible" class="memory-panel">
+  <div class="memory-panel">
     <div class="memory-row">
       <span class="memory-row__label">Flash (Programa):</span>
       <div
@@ -64,15 +63,17 @@ const sramStyle = computed(() => fillStyle(props.sram, 'var(--kor-accent)'))
       </div>
       <span class="memory-row__value">{{ sramText }}</span>
     </div>
-    <slot />
   </div>
 </template>
 
 <style scoped>
 .memory-panel {
-  padding: var(--kor-space-3) var(--kor-space-4) var(--kor-space-4);
+  flex: none;
+  margin-top: var(--kor-space-3);
+  padding: var(--kor-space-3);
   background-color: var(--kor-surface-2);
-  border-bottom: 1px solid var(--kor-surface-3);
+  border: 1px solid var(--kor-surface-3);
+  border-radius: var(--kor-radius-md);
 }
 
 .memory-row {

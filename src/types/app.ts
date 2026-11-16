@@ -33,3 +33,22 @@ export interface BoardInfo {
   protocol: string | null
   fqbn: string | null
 }
+
+export interface AppMenuItem {
+  id: string
+  label: string
+  disabled?: boolean
+  checked?: boolean
+}
+
+export interface AppMenuSeparator {
+  separator: true
+}
+
+export type AppMenuEntry = AppMenuItem | AppMenuSeparator
+
+export interface AppMenuDefinition {
+  id: string
+  label: string
+  items: AppMenuEntry[]
+}

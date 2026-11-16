@@ -1,9 +1,8 @@
 <script setup lang="ts">
-import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 const props = withDefaults(
   defineProps<{
-    visible: boolean
     text: string
     variant?: 'info' | 'error' | 'success'
   }>(),
@@ -17,6 +16,8 @@ const autoScroll = ref(true)
 const copied = ref(false)
 
 let copiedTimer: ReturnType<typeof setTimeout> | null = null
+
+const empty = computed(() => props.text.length === 0)
 
 function scrollToBottom() {
   const element = scroller.value
@@ -55,9 +56,8 @@ async function copy() {
 }
 
 watch(
-  () => [props.text, props.visible] as const,
+  () => props.text,
   () => {
-    if (!props.visible) return
     void nextTick(() => {
       if (autoScroll.value) scrollToBottom()
     })
@@ -71,30 +71,40 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <section v-show="visible" class="console" data-testid="console">
-    <header class="console__bar">
-      <span class="console__title">Salida</span>
-      <div class="console__actions">
-        <button type="button" class="console__action" :disabled="!text" @click="copy">
+  <section class="terminal" data-testid="console">
+    <header class="terminal__bar">
+      <span class="terminal__title">Terminal</span>
+      <div class="terminal__actions">
+        <button
+          type="button"
+          class="terminal__action"
+          :disabled="empty"
+          @click="copy"
+        >
           {{ copied ? 'Copiado' : 'Copiar' }}
         </button>
-        <button type="button" class="console__action" :disabled="!text" @click="emit('clear')">
-          Limpiar
+        <button
+          type="button"
+          class="terminal__action"
+          :disabled="empty"
+          @click="emit('clear')"
+        >
+          Limpiar terminal
         </button>
       </div>
     </header>
 
     <pre
       ref="scroller"
-      class="console__pre"
-      :class="`console__pre--${variant}`"
+      class="terminal__pre"
+      :class="[`terminal__pre--${variant}`, { 'terminal__pre--empty': empty }]"
       @scroll="onScroll"
-    >{{ text }}</pre>
+    >{{ empty ? 'La salida de compilación y carga aparecerá aquí.' : text }}</pre>
 
     <button
-      v-if="!autoScroll"
+      v-if="!autoScroll && !empty"
       type="button"
-      class="console__resume"
+      class="terminal__resume"
       @click="scrollToBottom"
     >
       Ir al final
@@ -103,39 +113,45 @@ onBeforeUnmount(() => {
 </template>
 
 <style scoped>
-.console {
+.terminal {
   position: relative;
-  margin-top: var(--kor-space-2);
+  display: flex;
+  flex-direction: column;
+  flex: none;
+  height: var(--kor-terminal-height);
+  min-height: 120px;
   background-color: var(--kor-console-bg);
-  border: 1px solid var(--kor-border-subtle);
-  border-radius: var(--kor-radius-md);
-  overflow: hidden;
+  border-top: 1px solid var(--kor-border-subtle);
 }
 
-.console__bar {
+.terminal__bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex: none;
   gap: var(--kor-space-2);
-  padding: var(--kor-space-1) var(--kor-space-2);
+  min-height: 34px;
+  padding: 0 var(--kor-space-3);
   background-color: var(--kor-surface-2);
   border-bottom: 1px solid var(--kor-border-subtle);
 }
 
-.console__title {
-  color: var(--kor-text-muted);
+.terminal__title {
+  color: var(--kor-text);
   font-size: var(--kor-text-xs);
-  text-transform: uppercase;
+  font-weight: var(--kor-weight-medium);
   letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
-.console__actions {
+.terminal__actions {
   display: flex;
   gap: var(--kor-space-1);
 }
 
-.console__action {
-  padding: 2px 8px;
+.terminal__action {
+  min-height: 26px;
+  padding: 2px var(--kor-space-2);
   background: none;
   border: 1px solid transparent;
   border-radius: var(--kor-radius-sm);
@@ -147,20 +163,21 @@ onBeforeUnmount(() => {
     color var(--kor-dur-fast) var(--kor-ease-out);
 }
 
-.console__action:hover:not(:disabled) {
+.terminal__action:hover:not(:disabled) {
   color: var(--kor-text-strong);
   background-color: var(--kor-surface-3);
 }
 
-.console__action:disabled {
+.terminal__action:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.console__pre {
+.terminal__pre {
+  flex: 1;
+  min-height: 0;
   margin: 0;
   padding: var(--kor-space-2) var(--kor-space-3);
-  max-height: 140px;
   overflow-y: auto;
   color: var(--kor-text);
   font-family: var(--kor-font-mono);
@@ -170,20 +187,22 @@ onBeforeUnmount(() => {
   word-break: break-word;
 }
 
-.console__pre--error {
+.terminal__pre--empty {
+  color: var(--kor-text-muted);
+}
+
+.terminal__pre--error {
   color: var(--kor-danger-text);
 }
 
-.console__pre--success {
+.terminal__pre--success {
   color: var(--kor-success);
 }
 
-.console__resume {
-  position: sticky;
-  right: var(--kor-space-2);
+.terminal__resume {
+  position: absolute;
+  right: var(--kor-space-3);
   bottom: var(--kor-space-2);
-  float: right;
-  margin: 0 var(--kor-space-2) var(--kor-space-2);
   padding: 2px 8px;
   color: var(--kor-text-strong);
   background-color: var(--kor-surface-3);
@@ -191,5 +210,15 @@ onBeforeUnmount(() => {
   border-radius: var(--kor-radius-pill);
   font-size: var(--kor-text-xs);
   cursor: pointer;
+}
+
+.terminal__resume:active {
+  transform: scale(0.96);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .terminal__resume:active {
+    transform: none;
+  }
 }
 </style>

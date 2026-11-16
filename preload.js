@@ -1,4 +1,4 @@
-const { contextBridge } = require('electron')
+const { contextBridge, ipcRenderer } = require('electron')
 const { execFile } = require('child_process')
 const fs = require('fs')
 const path = require('path')
@@ -17,6 +17,12 @@ function writeSketch(codigo) {
   fs.writeFileSync(sketchPath, codigo)
   return dir
 }
+
+contextBridge.exposeInMainWorld('windowControls', {
+  minimize: () => ipcRenderer.send('window:minimize'),
+  toggleMaximize: () => ipcRenderer.send('window:toggle-maximize'),
+  close: () => ipcRenderer.send('window:close'),
+})
 
 contextBridge.exposeInMainWorld('api', {
   detectarPlacas: (rutaCli) => {

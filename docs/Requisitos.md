@@ -28,7 +28,7 @@ estable para trazabilidad con [[Estrategia de pruebas]] y [[Contratos Tauri]].
 |---|---|---|
 | RF-01 | Editor de código C/C++ basado en CodeMirror 6, empaquetado localmente (sin `esm.sh`). | Q31 |
 | RF-02 | El editor debe ofrecer resaltado, numeración, autocompletado básico y tema claro/oscuro. | Q31, Q35 |
-| RF-03 | La interfaz visual y el comportamiento actual se conservan; se reimplementan en Vue 3. | Q29, Q30 |
+| RF-03 | La interfaz se reimplementa en Vue 3 y evoluciona según `docs/img/pantallaprincipal.svg`: header con menús sin barra nativa, acciones en el editor y terminal inferior (ADR-016). | Q29, Q30 |
 | RF-04 | Generación de código a partir de pines seleccionados en el diagrama SVG (salida, entrada, PWM), conservando la interacción actual. | Q36 |
 | RF-05 | Pestañas para múltiples archivos/sketches abiertos. | Q33 |
 | RF-06 | Autoguardado y persistencia del código entre sesiones. | Q32 |
@@ -45,7 +45,7 @@ estable para trazabilidad con [[Estrategia de pruebas]] y [[Contratos Tauri]].
 | RF-12 | Compilación con `arduino-cli` usando salida estructurada (`--format json` / `--json` según versión). | Q24 |
 | RF-13 | Mostrar salida completa de compilación y carga. | Q22 |
 | RF-14 | Resaltar en el editor los `warnings` y errores con archivo:línea:columna. | Q22, Q23 |
-| RF-15 | Mostrar barras/indicadores de uso de Flash y SRAM cuando el CLI los reporte. | Q22 (parcial) |
+| RF-15 | Mantener visibles los indicadores de Flash y SRAM en el panel izquierdo; actualizarlos cuando el CLI los reporte (0 % sin datos). | Q22 (parcial) |
 | RF-16 | Compilar sin subir y subir sin recompilar. | Q25 |
 | RF-17 | Cancelar compilación o carga en curso. | Q26 |
 | RF-18 | Soporte de configuración avanzada de carga: FQBN, programador, baudrate, verificación. | Q28 |

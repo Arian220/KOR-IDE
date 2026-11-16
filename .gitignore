@@ -20,3 +20,6 @@ skills/
 # Local env
 .env
 .env.local
+
+# Images and docs
+docs/img

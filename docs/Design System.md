@@ -103,6 +103,8 @@ Escala de 4 px:
 | `--kor-space-4` | `16px` |
 | `--kor-space-5` | `20px` |
 | `--kor-space-6` | `24px` |
+| `--kor-titlebar-height` | `40px` |
+| `--kor-terminal-height` | `200px` |
 | `--kor-radius-sm` | `3px` |
 | `--kor-radius-md` | `4px` |
 | `--kor-radius-lg` | `8px` |
@@ -143,7 +145,10 @@ Regla de radio concéntrico: `radio_exterior = radio_interior + padding`.
 | `Tabs` | Altura 36 px, activo con borde inferior de acento, cierre 16 px |
 | `Panel` | Fondo `surface`, radio 8 px, padding 20 px, borde sutil |
 | `Bar` | Altura 10 px, fondo `surface-3`, relleno acento/verde/rojo |
-| `Console` | Fondo `console-bg`, mono 13 px, padding 10 px, radio 4 px |
+| `MenuBar` | Altura `--kor-titlebar-height`, fondo `surface`, borde inferior `surface-3`, zona de arrastre |
+| `Menu` | Trigger de altura completa, dropdown `surface-2`, borde `border`, sombra `md`, ítems 30 px |
+| `WindowControl` | Hit area 40×40 px, icono 10 px, hover `surface-3`, cierre hover `danger` |
+| `Terminal` | Altura `--kor-terminal-height`, fondo `console-bg`, cabecera 34 px, mono 13 px |
 | `Toast` | Fondo `surface-3`, sombra `md`, auto-cierre 4 s |
 | `Select` | Altura 32 px, fondo `surface-2`, borde `border` |
 

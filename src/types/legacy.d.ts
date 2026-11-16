@@ -6,9 +6,16 @@ export interface ArduinoLegacyApi {
   subirAPlaca(codigo: string, rutaCli?: string, puerto?: string): Promise<CommandResult>
 }
 
+export interface ElectronWindowControls {
+  minimize(): void
+  toggleMaximize(): void
+  close(): void
+}
+
 declare global {
   interface Window {
     api?: ArduinoLegacyApi
+    windowControls?: ElectronWindowControls
   }
 }
 

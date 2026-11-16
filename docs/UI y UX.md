@@ -21,29 +21,56 @@ Guías: `ui-to-vue`, `vue-patterns`, `make-interfaces-feel-better`,
 
 ## 2. Estructura de pantalla
 
+Diseño de referencia: `docs/img/pantallaprincipal.svg` (ADR-016).
+
 ```text
 ┌───────────────────────────────────────────────────────────────┐
-│ Barra superior: KOR · [Detectar placas] [Compilar] [Subir]    │
+│ KOR  Archivo Editar Placas Ejecutar Terminal Ventana Acerca   │
+│                                    Tema [Sistema]  [−] [□] [×]│
 ├───────────────────────────────────────────────────────────────┤
-│ Pestañas: blink.ino × | motor.ino × | +                       │
-├───────────────────────────────┬───────────────────────────────┤
-│                               │  Diagrama Arduino UNO (SVG)   │
-│  Editor CodeMirror 6          │  - pines interactivos         │
-│                               │  - leyenda                    │
-│                               │  [Salida/Entrada/PWM]         │
-├───────────────────────────────┴───────────────────────────────┤
-│ Selector de placa / puerto (cuando aplica)                    │
+│ Diagrama Arduino UNO (SVG)   │ Pestañas [Detectar][Compilar]   │
+│ - pines interactivos         │          [Subir a la placa]     │
+│ - leyenda                    ├────────────────────────────────┤
+│ - Salida/Entrada/PWM         │ Selector de placa / puerto     │
+│                              ├────────────────────────────────┤
+│                              │ Editor CodeMirror 6            │
+│                              ├────────────────────────────────┤
+│ Memoria Flash/SRAM (siempre) │ Terminal                       │
+│ 0% hasta compilar            │ stdout/stderr · Copiar · Limpiar│
 ├───────────────────────────────────────────────────────────────┤
-│ Memoria: Flash ▓▓▓░░ 32% · SRAM ▓▓░░░ 18% (si hay datos)      │
-├───────────────────────────────────────────────────────────────┤
-│ Consola de salida (stdout/stderr, diagnósticos)               │
+│ Barra de estado                                               │
 └───────────────────────────────────────────────────────────────┘
 ```
 
+- La ventana no usa la barra de título nativa (`decorations: false`); el
+  header propio actúa como zona de arrastre y expone minimizar, maximizar y
+  cerrar.
+- El header integra el logotipo, los menús, el selector de tema y los
+  controles de ventana.
+- Los botones de acción viven en la cabecera del editor, a la derecha de las
+  pestañas.
+- La terminal queda fija al pie del panel derecho, debajo del editor.
+- Las barras de memoria viven al pie del panel izquierdo y permanecen
+  visibles con 0 % hasta que el CLI reporte datos.
 - El diagrama SVG conserva la interacción actual (selección de pines y modo).
 - Las pestañas muestran archivo activo, indicador `dirty` y cierre.
 - La barra de estado puede mostrar «Listo», «Compilando», «Cargando»,
   «Sin placa», «CLI no disponible».
+
+### 2.1 Menú principal
+
+| Menú | Acciones |
+|---|---|
+| Archivo | Nueva pestaña, cerrar pestaña, salir |
+| Editar | Renombrar pestaña, copiar código |
+| Placas | Detectar placas, subir a la placa |
+| Ejecutar | Compilar, cancelar operación |
+| Terminal | Copiar salida, limpiar terminal |
+| Ventana | Tema (sistema/oscuro/claro), minimizar, maximizar, cerrar |
+| Acerca de | Información de la versión |
+
+Los menús se cierran con `Escape` o al hacer clic fuera. Las acciones no
+disponibles se muestran deshabilitadas.
 
 ## 3. Flujos
 
@@ -51,10 +78,10 @@ Guías: `ui-to-vue`, `vue-patterns`, `make-interfaces-feel-better`,
 
 1. Usuario pulsa **Compilar**.
 2. Botón → «Compilando…» y deshabilitado; se inicia el job.
-3. La consola se limpia al iniciar (P-02) y recibe salida en streaming.
+3. La terminal se limpia al iniciar (P-02) y recibe salida en streaming.
 4. Al terminar:
-   - Éxito: consola con salida, diagnósticos resaltados, memoria si existe.
-   - Error: consola en rojo, diagnósticos con enlace a línea, botón habilitado.
+   - Éxito: terminal con salida, diagnósticos resaltados, memoria si existe.
+   - Error: terminal en rojo, diagnósticos con enlace a línea, botón habilitado.
 
 ### 3.2 Subir
 
@@ -84,9 +111,9 @@ Guías: `ui-to-vue`, `vue-patterns`, `make-interfaces-feel-better`,
 | CLI ausente | barra | Aviso + «Descargar» / «Elegir ruta» |
 | Sin placa | selector | Guía, no bloquea compilar |
 | Compilando | botones | Deshabilitar compilar/subir; mostrar cancelar |
-| Error compilación | consola + editor | Rojo, diagnósticos clicables |
-| Error carga | consola | Rojo con detalle |
-| Cancelado | consola | Mensaje neutro |
+| Error compilación | terminal + editor | Rojo, diagnósticos clicables |
+| Error carga | terminal | Rojo con detalle |
+| Cancelado | terminal | Mensaje neutro |
 | Sketch sin guardar | pestaña | Punto/asterisco |
 | Tema | raíz | Claro/oscuro/sistema |
 
@@ -99,13 +126,16 @@ Guías: `ui-to-vue`, `vue-patterns`, `make-interfaces-feel-better`,
 - Autoguardado con debounce (~800 ms) y guardado al cerrar pestaña.
 - Restauración de pestañas y cursor al abrir la app.
 
-## 6. Consola
+## 6. Terminal
 
+- Ocupa el pie del panel del editor y permanece visible con un mensaje de
+  espera mientras no hay actividad.
 - Muestra stdout y stderr con prefijo o color distinto.
 - Streaming en tiempo real (RF-29).
 - Auto-scroll con opción de detener si el usuario sube.
 - Límite de memoria (p. ej. 5000 líneas) con recorte del inicio.
-- Botón «Copiar» y «Limpiar».
+- Acciones «Copiar» y «Limpiar terminal» en la cabecera; también accesibles
+  desde el menú Terminal.
 - Los diagnósticos se muestran además como lista con enlace al editor.
 
 ## 7. Temas y tokens
@@ -144,14 +174,16 @@ Aplicar `make-interfaces-feel-better`:
 | Componente | Responsabilidad |
 |---|---|
 | `IdePage.vue` | Composición general y layout |
+| `AppMenuBar.vue` | Header sin barra nativa, menús, tema y controles de ventana |
 | `EditorTabs.vue` | Pestañas y archivo activo |
 | `CodeEditor.vue` | CodeMirror y diagnósticos |
 | `ArduinoUnoSvg.vue` | Diagrama interactivo y generación de código |
 | `BoardSelector.vue` | Detección, lista y selección |
 | `MemoryBars.vue` | Flash/SRAM |
-| `ConsoleOutput.vue` | Streaming, copiar, limpiar |
+| `ConsoleOutput.vue` | Terminal inferior: streaming, copiar, limpiar |
 | `ActionBar.vue` | Detectar/Compilar/Subir/Cancelar |
 | `AppToast.vue` | Avisos no bloqueantes |
+| `useWindowControls.ts` | Puente Tauri/Electron para minimizar, maximizar y cerrar |
 
 ## 12. Textos
 

@@ -203,6 +203,10 @@ export function useArduino() {
 
       if (resultado.success) {
         applyMemory(resultado)
+        showConsole(
+          salidaDe(resultado) || 'Compilación completada sin salida del CLI.',
+          'success',
+        )
         setStatus('Compilación correcta', 'success')
       } else {
         const sinCli = esErrorCliAusente(resultado.error) || esErrorCliAusente(resultado.stderr)

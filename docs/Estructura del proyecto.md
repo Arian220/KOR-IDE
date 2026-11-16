@@ -22,10 +22,11 @@ loopiIDE/
 │   │   ├── console/               # ConsoleOutput.vue
 │   │   ├── diagram/               # ArduinoUnoSvg.vue, pinCoordinates.ts
 │   │   ├── editor/                # CodeEditor.vue, EditorTabs.vue
+│   │   ├── layout/                # AppMenuBar.vue
 │   │   ├── memory/                # MemoryBars.vue
 │   │   └── status/                # StatusBar.vue
 │   ├── composables/               # useArduino, useDiagram, useEditor,
-│   │                              # useTheme, useToast
+│   │                              # useTheme, useToast, useWindowControls
 │   ├── pages/IdePage.vue
 │   ├── types/                     # app.ts, contract.ts, legacy.d.ts
 │   ├── utils/                     # codegen.ts, memory.ts
@@ -60,8 +61,9 @@ kor/
 │   │   ├── base/                  # Button, IconButton, Bar, Tabs, Toast
 │   │   ├── editor/                # CodeEditor.vue, EditorTabs.vue
 │   │   ├── board/                 # BoardSelector.vue, BoardCard.vue
-│   │   ├── console/               # ConsoleOutput.vue
+│   │   ├── console/               # ConsoleOutput.vue (terminal inferior)
 │   │   ├── diagram/               # ArduinoUnoSvg.vue
+│   │   ├── layout/                # AppMenuBar.vue
 │   │   ├── memory/                # MemoryBars.vue
 │   │   ├── status/                # StatusBar.vue
 │   │   └── sketch/                # SketchList.vue
@@ -73,6 +75,7 @@ kor/
 │   │   ├── useSketches.ts
 │   │   ├── useTheme.ts
 │   │   ├── useToast.ts
+│   │   ├── useWindowControls.ts
 │   │   └── useConfig.ts
 │   ├── stores/
 │   │   ├── config.ts

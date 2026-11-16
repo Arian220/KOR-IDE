@@ -60,6 +60,13 @@ function onTabKeydown(event: KeyboardEvent, tab: EditorTab) {
     emit('select', tab.id)
   }
 }
+
+function startRenameActive() {
+  const tab = props.tabs.find((candidate) => candidate.id === props.activeId)
+  if (tab) startRename(tab)
+}
+
+defineExpose({ startRenameActive })
 </script>
 
 <template>
@@ -127,11 +134,12 @@ function onTabKeydown(event: KeyboardEvent, tab: EditorTab) {
 .tabs {
   display: flex;
   align-items: stretch;
+  flex: 1;
   gap: 1px;
-  height: 38px;
+  min-width: 0;
+  height: calc(var(--kor-titlebar-height) - 1px);
   padding: 0 var(--kor-space-2);
-  background-color: var(--kor-surface-2);
-  border-bottom: 1px solid var(--kor-surface-3);
+  background-color: transparent;
   overflow-x: auto;
   scrollbar-width: thin;
 }
