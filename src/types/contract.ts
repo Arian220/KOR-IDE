@@ -25,6 +25,7 @@ export interface CommandResult {
   stdout: string
   stderr: string
   error?: string
+  memory?: MemoryState | null
 }
 
 export interface CliInfo {

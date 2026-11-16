@@ -30,12 +30,21 @@ export interface TauriCliStatus {
   required_version: string
 }
 
+export interface TauriMemoryUsage {
+  flash_used: number
+  flash_max: number
+  flash_percent: number
+  sram_used: number
+  sram_max: number
+  sram_percent: number
+}
+
 export interface TauriCompileResult {
   success: boolean
   stdout: string
   stderr: string
   diagnostics: unknown[]
-  memory: unknown | null
+  memory: TauriMemoryUsage | null
   build_dir: string | null
 }
 

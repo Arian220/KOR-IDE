@@ -6,6 +6,7 @@ import type {
   TauriCliStatus,
   TauriCompileResult,
   TauriJobEvent,
+  TauriMemoryUsage,
   TauriSketch,
   TauriSketchSummary,
   TauriUploadResult,
@@ -157,6 +158,14 @@ function resultadoDeError(error: TauriAppError, mensaje: string): CommandResult 
   }
 }
 
+function memoriaDesdeTauri(usage: TauriMemoryUsage | null): CommandResult['memory'] {
+  if (!usage) return null
+  return {
+    flash: { bytes: usage.flash_used, percent: usage.flash_percent },
+    sram: { bytes: usage.sram_used, percent: usage.sram_percent },
+  }
+}
+
 export const tauriApi: ArduinoApi = {
   puedeCancelar: true,
 
@@ -207,6 +216,7 @@ export const tauriApi: ArduinoApi = {
         success: true,
         stdout: resultado.stdout,
         stderr: resultado.stderr,
+        memory: memoriaDesdeTauri(resultado.memory),
       }
     } catch (error) {
       if (esAppError(error) && error.kind === 'compile_failed') {

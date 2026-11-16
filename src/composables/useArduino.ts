@@ -108,8 +108,8 @@ export function useArduino() {
     consoleVariant.value = 'info'
   }
 
-  function applyMemory(result: { stdout: string; stderr: string }) {
-    memory.value = parsearMemoria(result.stdout, result.stderr)
+  function applyMemory(result: { stdout: string; stderr: string; memory?: MemoryState | null }) {
+    memory.value = result.memory ?? parsearMemoria(result.stdout, result.stderr)
     memoryError.value = false
     memoryVisible.value = true
   }
