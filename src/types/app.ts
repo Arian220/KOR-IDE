@@ -1,0 +1,35 @@
+export type ThemeMode = 'system' | 'dark' | 'light'
+export type ResolvedTheme = 'dark' | 'light'
+export type ToastKind = 'info' | 'success' | 'error'
+
+export interface EditorCursor {
+  line: number
+  column: number
+}
+
+export interface EditorTab {
+  id: string
+  name: string
+  content: string
+  cursor: EditorCursor | null
+  dirty: boolean
+}
+
+export interface KorConfig {
+  theme: ThemeMode
+  autosave: boolean
+  autosaveDelayMs: number
+}
+
+export interface KorSession {
+  version: 1
+  activeTabId: string
+  tabs: EditorTab[]
+}
+
+export interface BoardInfo {
+  port: string
+  label: string
+  protocol: string | null
+  fqbn: string | null
+}

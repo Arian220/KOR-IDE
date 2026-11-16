@@ -1,20 +1,44 @@
 {
-  "name": "mi-ide-arduino",
-  "version": "1.0.0",
-  "description": "",
+  "name": "kor",
+  "version": "0.1.0",
+  "description": "KOR — IDE visual para Arduino",
+  "private": true,
   "main": "main.js",
+  "type": "commonjs",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vue-tsc --noEmit && vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "preview": "vite preview",
+    "electron:dev": "concurrently -k \"vite\" \"wait-on http://localhost:5173 && cross-env VITE_DEV_SERVER_URL=http://localhost:5173 electron .\"",
+    "electron:build": "pnpm build && electron .",
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "test": "echo \"Sin pruebas unitarias todavía (fase 5)\" && exit 0"
   },
   "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
+  "author": "Loop-i",
+  "license": "MIT",
   "devDependencies": {
-    "electron": "^45.3.2"
+    "@tauri-apps/cli": "^2.12.4",
+    "@types/node": "^26.6.6",
+    "@vitejs/plugin-vue": "^6.0.11",
+    "concurrently": "^10.0.7",
+    "cross-env": "^10.1.0",
+    "electron": "^45.3.2",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.8",
+    "vue-tsc": "^3.3.14",
+    "wait-on": "^9.5.1"
   },
   "dependencies": {
     "@codemirror/lang-cpp": "^6.0.3",
-    "codemirror": "^6.0.2"
+    "@codemirror/state": "^6.7.6",
+    "@codemirror/theme-one-dark": "^6.1.3",
+    "@codemirror/view": "^6.43.15",
+    "@tauri-apps/api": "^2.12.4",
+    "codemirror": "^6.0.2",
+    "vue": "^3.5.45"
   }
 }

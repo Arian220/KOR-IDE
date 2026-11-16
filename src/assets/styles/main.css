@@ -1,0 +1,51 @@
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--kor-bg);
+  color: var(--kor-text);
+  font-family: var(--kor-font-ui);
+  font-size: var(--kor-text-md);
+  line-height: var(--kor-leading);
+}
+
+button,
+select,
+input {
+  font: inherit;
+}
+
+button:focus-visible,
+select:focus-visible,
+input:focus-visible {
+  outline: none;
+  box-shadow: var(--kor-shadow-focus);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--kor-border-subtle);
+  border-radius: var(--kor-radius-pill);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--kor-border);
+}

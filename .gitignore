@@ -1,0 +1,22 @@
+node_modules/
+
+# Build output
+dist/
+.vite/
+coverage/
+playwright-report/
+test-results/
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Legacy ephemeral sketch (removed in phase 1)
+temp_sketch/
+
+# Agents files (local engineering skills)
+skills/
+
+# Local env
+.env
+.env.local

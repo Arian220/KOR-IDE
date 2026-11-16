@@ -1,36 +1,44 @@
-const { app, BrowserWindow } = require('electron');
-const path = require('path');
+const { app, BrowserWindow } = require('electron')
+const path = require('path')
+
+const devServerUrl = process.env.VITE_DEV_SERVER_URL
 
 function createWindow () {
   const win = new BrowserWindow({
-  width: 1000,
-  height: 700,
-  title: "Mi IDE Arduino",
-  webPreferences: {
-    preload: path.join(__dirname, 'preload.js'),
-    contextIsolation: true,
-    nodeIntegration: false,
-    sandbox: false,
-    webSecurity: false
-  }
-});
+    width: 1200,
+    height: 760,
+    minWidth: 900,
+    minHeight: 600,
+    title: 'KOR',
+    backgroundColor: '#1e1e1e',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: false
+    }
+  })
 
-  win.loadFile('index.html');
-  win.webContents.openDevTools(); // <-- Esto abre la consola de desarrollo (útil para depurar)
+  if (devServerUrl) {
+    win.loadURL(devServerUrl)
+    win.webContents.openDevTools()
+  } else {
+    win.loadFile(path.join(__dirname, 'dist', 'index.html'))
+  }
 }
 
 app.whenReady().then(() => {
-  createWindow();
+  createWindow()
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
+      createWindow()
     }
-  });
-});
+  })
+})
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
-    app.quit();
+    app.quit()
   }
-});
+})
