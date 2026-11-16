@@ -35,9 +35,6 @@ seguridad y operación. Es la fuente de verdad previa a cualquier línea de cód
 - [[Distribución]] — empaquetado, formatos, checksums y firma.
 - [[Entorno de desarrollo]] — herramientas, instalación y comandos.
 
-## Documentos fuente
-- [[PREGUNTAS_ARQUITECTURA]] — cuestionario respondido que originó estas decisiones.
-
 ## Reglas del baúl
 1. Toda decisión técnica relevante se registra en [[Decisiones de arquitectura]].
 2. Todo cambio de alcance se refleja primero en [[Requisitos]].

@@ -49,7 +49,8 @@ Diseño de referencia: `docs/img/pantallaprincipal.svg` (ADR-016).
   controles de ventana.
 - Los botones de acción viven en la cabecera del editor, a la derecha de las
   pestañas.
-- La terminal queda fija al pie del panel derecho, debajo del editor.
+- La terminal queda al pie del panel derecho, debajo del editor, y puede
+  abrirse o cerrarse desde el menú Terminal.
 - Las barras de memoria viven al pie del panel izquierdo y permanecen
   visibles con 0 % hasta que el CLI reporte datos.
 - El diagrama SVG conserva la interacción actual (selección de pines y modo).
@@ -62,19 +63,35 @@ Diseño de referencia: `docs/img/pantallaprincipal.svg` (ADR-016).
 
 ### 2.1 Menú principal
 
-| Menú | Acciones |
-|---|---|
-| Archivo | Nuevo archivo (`Ctrl+N`), Abrir sketch… (`Ctrl+O`), Guardar (`Ctrl+S`), Guardar como… (`Ctrl+Shift+S`), Guardar todo (`Ctrl+Alt+S`), Cerrar pestaña (`Ctrl+W`), Salir |
-| Editar | Renombrar pestaña, copiar código |
-| Placas | Detectar placas, subir a la placa |
-| Ejecutar | Compilar, cancelar operación |
-| Terminal | Copiar salida, limpiar terminal |
-| Ventana | Tema (sistema/oscuro/claro), minimizar, maximizar, cerrar |
-| Acerca de | Información de la versión |
+| Menú      | Acciones                                                                                                                                                                                                 |
+| --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Archivo   | Nuevo archivo (`Ctrl+N`), Abrir sketch… (`Ctrl+O`), Guardar (`Ctrl+S`), Guardar como… (`Ctrl+Shift+S`), Guardar todo (`Ctrl+Alt+S`), Cerrar pestaña (`Ctrl+W`), Salir |
+| Editar    | Renombrar pestaña (`F2`), Deshacer (`Ctrl+Z`), Rehacer (`Ctrl+Shift+Z`), Cortar (`Ctrl+X`), Copiar (`Ctrl+C`), Pegar (`Ctrl+V`), Buscar (`Ctrl+F`)                                                        |
+| Placas    | Detectar placas (`Ctrl+Shift+D`), Subir a la placa (`Ctrl+U`), Configurar placa (FQBN), Información de la placa                                                                                           |
+| Ejecutar  | Compilar (`Ctrl+B`), Cancelar operación, Depurar (próximamente), Puntos de interrupción (próximamente)                                                                                                    |
+| Terminal  | Abrir terminal (Ctrl + \`), Cerrar terminal (Ctrl + \`), Copiar salida (`Ctrl+Shift+C`), Limpiar terminal (`Ctrl+Shift+L`)                                                                                    |
+| Ventana   | Tema (sistema/oscuro/claro), minimizar, maximizar, cerrar                                                                                                                                                |
+| Acerca de | Información de KOR (`F1`), Documentación (GitHub), Buscar actualizaciones, Licencia                                                                                                                       |
 
 Los menús se cierran con `Escape` o al hacer clic fuera. Las acciones no
 disponibles se muestran deshabilitadas. Los atajos se muestran en una columna a
 la derecha de cada acción.
+
+### 2.2 Información de KOR
+
+La acción **Acerca de → Información de KOR** (`F1`) abre un diálogo modal
+centrado con:
+
+- logotipo, nombre y descripción de KOR;
+- versión y fecha de publicación de esa versión;
+- tipo de licencia;
+- stack: Tauri 2 + Rust, Vue 3 + TypeScript, Vite, CodeMirror 6 y
+  `arduino-cli`;
+- datos del sistema operativo: plataforma, versión, arquitectura, idioma y
+  resolución de pantalla.
+
+Los datos de la aplicación viven en `src/config/appInfo.ts`; los del sistema se
+deducen en el webview y no se envían a ningún servicio.
 
 ## 3. Flujos
 
@@ -159,8 +176,8 @@ CLI); si no está disponible, se usa el parseo de texto como respaldo.
 
 ## 6. Terminal
 
-- Ocupa el pie del panel del editor y permanece visible con un mensaje de
-  espera mientras no hay actividad.
+- Ocupa el pie del panel del editor y puede abrirse o cerrarse desde el menú
+  Terminal (Ctrl + \`); muestra un mensaje de espera mientras no hay actividad.
 - Muestra stdout y stderr con prefijo o color distinto.
 - Streaming en tiempo real (RF-29).
 - Auto-scroll con opción de detener si el usuario sube.
@@ -214,10 +231,14 @@ Aplicar `make-interfaces-feel-better`:
 | `ConsoleOutput.vue` | Terminal inferior: streaming, copiar, limpiar |
 | `ActionBar.vue` | Detectar/Compilar/Subir/Cancelar |
 | `AppDialog.vue` | Diálogo modal base para confirmaciones y avisos |
-| `AppPrompt.vue` | Diálogo modal para pedir un nombre (Guardar como) |
+| `AppPrompt.vue` | Diálogo modal para pedir un nombre o un FQBN |
 | `SketchPicker.vue` | Selector modal de sketches guardados |
+| `BoardInfoDialog.vue` | Información de la placa seleccionada |
+| `AboutKorDialog.vue` | Información de KOR, versión, licencia, stack y sistema |
+| `LicenseDialog.vue` | Texto de la licencia MIT |
 | `AppToast.vue` | Avisos no bloqueantes |
 | `useSketchFiles.ts` | Guardar, guardar como, guardar todo, listar y abrir sketches |
+| `useAppInfo.ts` | Metadatos de la app y datos del sistema operativo |
 | `useWindowControls.ts` | Puente Tauri/Electron para minimizar, maximizar y cerrar |
 
 ## 12. Textos

@@ -66,6 +66,7 @@ export function useArduino() {
   const selectedPort = ref<string | null>(null)
   const hasDetected = ref(false)
   const boardError = ref<string | null>(null)
+  const manualFqbn = ref<string | null>(null)
 
   const memoryVisible = ref(false)
   const memoryError = ref(false)
@@ -122,6 +123,13 @@ export function useArduino() {
   function fqbnSeleccionado(port: string | null): string {
     const board = boards.value.find((item) => item.port === port)
     return board?.fqbn || DEFAULT_FQBN
+  }
+
+  const configuredFqbn = computed(() => manualFqbn.value ?? fqbnSeleccionado(selectedPort.value))
+
+  function setFqbn(fqbn: string | null) {
+    const value = fqbn?.trim() ?? ''
+    manualFqbn.value = value.length > 0 ? value : null
   }
 
   async function comprobarCli() {
@@ -196,7 +204,7 @@ export function useArduino() {
     try {
       const resultado = await arduinoApi.compilar(codigo, {
         ...options,
-        fqbn: fqbnSeleccionado(selectedPort.value),
+        fqbn: configuredFqbn.value,
         onJobId: (jobId) => {
           currentJobId.value = jobId
         },
@@ -270,7 +278,7 @@ export function useArduino() {
     try {
       const resultado = await arduinoApi.subirAPlaca(codigo, puerto, {
         ...options,
-        fqbn: fqbnSeleccionado(puerto),
+        fqbn: configuredFqbn.value,
         onJobId: (jobId) => {
           currentJobId.value = jobId
         },
@@ -340,6 +348,7 @@ export function useArduino() {
     selectedPort,
     hasDetected,
     boardError,
+    configuredFqbn,
     status,
     statusKind,
     memoryVisible,
@@ -353,6 +362,7 @@ export function useArduino() {
     detectar,
     cancelar,
     setSelectedPort,
+    setFqbn,
     clearConsole,
   }
 }

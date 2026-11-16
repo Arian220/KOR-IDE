@@ -1,8 +1,11 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import AboutKorDialog from '@/components/about/AboutKorDialog.vue'
+import LicenseDialog from '@/components/about/LicenseDialog.vue'
 import ActionBar from '@/components/action/ActionBar.vue'
 import AppPrompt from '@/components/base/AppPrompt.vue'
 import AppToast from '@/components/base/AppToast.vue'
+import BoardInfoDialog from '@/components/board/BoardInfoDialog.vue'
 import BoardSelector from '@/components/board/BoardSelector.vue'
 import ConsoleOutput from '@/components/console/ConsoleOutput.vue'
 import ArduinoUnoSvg from '@/components/diagram/ArduinoUnoSvg.vue'
@@ -19,6 +22,7 @@ import { useSketchFiles } from '@/composables/useSketchFiles'
 import { useTheme } from '@/composables/useTheme'
 import { useToast } from '@/composables/useToast'
 import { useWindowControls } from '@/composables/useWindowControls'
+import { APP_INFO } from '@/config/appInfo'
 import type { AppMenuDefinition } from '@/types/app'
 import type { PinFunction } from '@/types/contract'
 
@@ -44,6 +48,7 @@ const {
   selectedPort,
   hasDetected,
   boardError,
+  configuredFqbn,
   status,
   statusKind,
   memoryError,
@@ -55,6 +60,7 @@ const {
   detectar,
   cancelar,
   setSelectedPort,
+  setFqbn,
   clearConsole,
 } = useArduino()
 const { show: showToast } = useToast()
@@ -71,11 +77,41 @@ const {
   abrirSketch,
 } = useSketchFiles()
 
-const editorRef = ref<{ focus: () => void } | null>(null)
+const editorRef = ref<{
+  focus: () => void
+  copySelection: () => Promise<boolean>
+  cutSelection: () => Promise<boolean>
+  pasteClipboard: () => Promise<boolean>
+  undo: () => void
+  redo: () => void
+  find: () => void
+} | null>(null)
 const editorTabsRef = ref<{ startRenameActive: () => void } | null>(null)
 const saveAsOpen = ref(false)
 const saveAsName = ref('')
 const pickerOpen = ref(false)
+const boardConfigOpen = ref(false)
+const boardConfigValue = ref('')
+const boardInfoOpen = ref(false)
+const aboutOpen = ref(false)
+const licenseOpen = ref(false)
+const terminalVisible = ref(true)
+const updateChecking = ref(false)
+
+const selectedBoard = computed(() => {
+  return boards.value.find((board) => board.port === selectedPort.value) ?? null
+})
+
+const anyDialogOpen = computed(() => {
+  return (
+    saveAsOpen.value ||
+    pickerOpen.value ||
+    boardConfigOpen.value ||
+    boardInfoOpen.value ||
+    aboutOpen.value ||
+    licenseOpen.value
+  )
+})
 
 const menus = computed<AppMenuDefinition[]>(() => [
   {
@@ -102,32 +138,83 @@ const menus = computed<AppMenuDefinition[]>(() => [
     id: 'edit',
     label: 'Editar',
     items: [
-      { id: 'edit.rename', label: 'Renombrar pestaña' },
-      { id: 'edit.copy', label: 'Copiar código', disabled: editorText.value.length === 0 },
+      { id: 'edit.rename', label: 'Renombrar pestaña', shortcut: 'F2' },
+      { separator: true },
+      { id: 'edit.undo', label: 'Deshacer', shortcut: 'Ctrl+Z' },
+      { id: 'edit.redo', label: 'Rehacer', shortcut: 'Ctrl+Shift+Z' },
+      { separator: true },
+      { id: 'edit.cut', label: 'Cortar', shortcut: 'Ctrl+X', disabled: editorText.value.length === 0 },
+      { id: 'edit.copy', label: 'Copiar', shortcut: 'Ctrl+C', disabled: editorText.value.length === 0 },
+      { id: 'edit.paste', label: 'Pegar', shortcut: 'Ctrl+V' },
+      { separator: true },
+      { id: 'edit.find', label: 'Buscar', shortcut: 'Ctrl+F' },
     ],
   },
   {
     id: 'boards',
     label: 'Placas',
     items: [
-      { id: 'boards.detect', label: 'Detectar placas', disabled: isBusy.value },
-      { id: 'boards.upload', label: 'Subir a la placa', disabled: isBusy.value },
+      {
+        id: 'boards.detect',
+        label: 'Detectar placas',
+        shortcut: 'Ctrl+Shift+D',
+        disabled: isBusy.value,
+      },
+      {
+        id: 'boards.upload',
+        label: 'Subir a la placa',
+        shortcut: 'Ctrl+U',
+        disabled: isBusy.value,
+      },
+      { separator: true },
+      { id: 'boards.config', label: 'Configurar placa' },
+      {
+        id: 'boards.info',
+        label: 'Información de la placa',
+        disabled: !selectedBoard.value,
+      },
     ],
   },
   {
     id: 'run',
     label: 'Ejecutar',
     items: [
-      { id: 'run.compile', label: 'Compilar', disabled: isBusy.value },
+      { id: 'run.compile', label: 'Compilar', shortcut: 'Ctrl+B', disabled: isBusy.value },
       { id: 'run.cancel', label: 'Cancelar operación', disabled: !canCancel.value },
+      { separator: true },
+      { id: 'run.debug', label: 'Depurar (próximamente)', disabled: true },
+      { id: 'run.breakpoints', label: 'Puntos de interrupción (próximamente)', disabled: true },
     ],
   },
   {
     id: 'terminal',
     label: 'Terminal',
     items: [
-      { id: 'terminal.copy', label: 'Copiar salida', disabled: consoleText.value.length === 0 },
-      { id: 'terminal.clear', label: 'Limpiar terminal', disabled: consoleText.value.length === 0 },
+      {
+        id: 'terminal.open',
+        label: 'Abrir terminal',
+        shortcut: 'Ctrl+`',
+        disabled: terminalVisible.value,
+      },
+      {
+        id: 'terminal.close',
+        label: 'Cerrar terminal',
+        shortcut: 'Ctrl+`',
+        disabled: !terminalVisible.value,
+      },
+      { separator: true },
+      {
+        id: 'terminal.copy',
+        label: 'Copiar salida',
+        shortcut: 'Ctrl+Shift+C',
+        disabled: consoleText.value.length === 0,
+      },
+      {
+        id: 'terminal.clear',
+        label: 'Limpiar terminal',
+        shortcut: 'Ctrl+Shift+L',
+        disabled: consoleText.value.length === 0,
+      },
     ],
   },
   {
@@ -146,7 +233,13 @@ const menus = computed<AppMenuDefinition[]>(() => [
   {
     id: 'about',
     label: 'Acerca de',
-    items: [{ id: 'about.show', label: 'Información de KOR' }],
+    items: [
+      { id: 'about.show', label: 'Información de KOR', shortcut: 'F1' },
+      { id: 'about.docs', label: 'Documentación (GitHub)' },
+      { id: 'about.updates', label: 'Buscar actualizaciones', disabled: updateChecking.value },
+      { separator: true },
+      { id: 'about.license', label: 'Licencia' },
+    ],
   },
 ])
 
@@ -180,12 +273,28 @@ function closeActiveTab() {
 }
 
 async function copyEditor() {
-  try {
-    await navigator.clipboard.writeText(editorText.value)
-    showToast('Código copiado.', 'success')
-  } catch {
-    showToast('No se pudo copiar el código.', 'error')
+  const copied = await editorRef.value?.copySelection()
+  showToast(
+    copied ? 'Código copiado.' : 'No se pudo copiar el código.',
+    copied ? 'success' : 'error',
+  )
+}
+
+async function cutEditor() {
+  const cut = await editorRef.value?.cutSelection()
+  if (!cut) {
+    showToast('Selecciona texto para cortar.', 'info')
+    return
   }
+  showToast('Texto cortado.', 'success')
+}
+
+async function pasteEditor() {
+  const pasted = await editorRef.value?.pasteClipboard()
+  showToast(
+    pasted ? 'Texto pegado.' : 'No se pudo pegar desde el portapapeles.',
+    pasted ? 'success' : 'error',
+  )
 }
 
 async function copyTerminal() {
@@ -223,8 +332,23 @@ function onCommand(id: string) {
     case 'edit.rename':
       editorTabsRef.value?.startRenameActive()
       break
+    case 'edit.undo':
+      editorRef.value?.undo()
+      break
+    case 'edit.redo':
+      editorRef.value?.redo()
+      break
+    case 'edit.cut':
+      void cutEditor()
+      break
     case 'edit.copy':
       void copyEditor()
+      break
+    case 'edit.paste':
+      void pasteEditor()
+      break
+    case 'edit.find':
+      editorRef.value?.find()
       break
     case 'boards.detect':
       onDetect()
@@ -232,11 +356,23 @@ function onCommand(id: string) {
     case 'boards.upload':
       onUpload()
       break
+    case 'boards.config':
+      openBoardConfig()
+      break
+    case 'boards.info':
+      boardInfoOpen.value = true
+      break
     case 'run.compile':
       onCompile()
       break
     case 'run.cancel':
       onCancel()
+      break
+    case 'terminal.open':
+      terminalVisible.value = true
+      break
+    case 'terminal.close':
+      terminalVisible.value = false
       break
     case 'terminal.copy':
       void copyTerminal()
@@ -263,7 +399,16 @@ function onCommand(id: string) {
       windowControls.close()
       break
     case 'about.show':
-      showToast('KOR 0.1.0 — IDE visual para Arduino.', 'info')
+      aboutOpen.value = true
+      break
+    case 'about.docs':
+      void openDocumentation()
+      break
+    case 'about.updates':
+      void checkUpdates()
+      break
+    case 'about.license':
+      licenseOpen.value = true
       break
     default:
       break
@@ -312,6 +457,71 @@ async function onSaveAsConfirm(name: string) {
   await guardarComo(name)
 }
 
+function openBoardConfig() {
+  boardConfigValue.value = configuredFqbn.value
+  boardConfigOpen.value = true
+}
+
+function onBoardConfigConfirm(fqbn: string) {
+  boardConfigOpen.value = false
+  const value = fqbn.trim()
+  if (!/^[^:\s]+:[^:\s]+:[^:\s]+(?::.+)?$/.test(value)) {
+    showToast('El FQBN debe tener el formato fabricante:arquitectura:placa.', 'error')
+    return
+  }
+  setFqbn(value)
+  showToast(`FQBN configurado: ${value}`, 'success')
+}
+
+async function openDocumentation() {
+  try {
+    const opened = window.open(APP_INFO.repository, '_blank', 'noopener,noreferrer')
+    if (!opened) throw new Error('ventana bloqueada')
+  } catch {
+    try {
+      await navigator.clipboard.writeText(APP_INFO.repository)
+      showToast('No se pudo abrir el navegador. Enlace copiado al portapapeles.', 'info')
+    } catch {
+      showToast(`Documentación: ${APP_INFO.repository}`, 'info')
+    }
+  }
+}
+
+async function checkUpdates() {
+  if (updateChecking.value) return
+  updateChecking.value = true
+  showToast('Buscando actualizaciones...', 'info')
+
+  try {
+    const response = await fetch(APP_INFO.releasesApi, {
+      headers: { Accept: 'application/vnd.github+json' },
+    })
+    if (response.status === 404) {
+      showToast('Todavía no hay releases publicados.', 'info')
+      return
+    }
+    if (!response.ok) throw new Error('respuesta no válida')
+
+    const data = (await response.json()) as { tag_name?: string }
+    const latest = data.tag_name?.replace(/^v/i, '')
+    if (!latest) throw new Error('versión no disponible')
+
+    if (latest === APP_INFO.version) {
+      showToast(`KOR ${APP_INFO.version} está actualizado.`, 'success')
+    } else {
+      showToast(`Hay una nueva versión disponible: ${latest}.`, 'info')
+    }
+  } catch {
+    showToast('No se pudieron comprobar las actualizaciones.', 'error')
+  } finally {
+    updateChecking.value = false
+  }
+}
+
+function toggleTerminal() {
+  terminalVisible.value = !terminalVisible.value
+}
+
 async function onOpenSketches() {
   pickerOpen.value = true
   await cargarSketches()
@@ -352,7 +562,19 @@ async function onUpload() {
 }
 
 function onShortcut(event: KeyboardEvent) {
-  if (saveAsOpen.value || pickerOpen.value) return
+  if (anyDialogOpen.value) return
+
+  if (event.key === 'F1') {
+    event.preventDefault()
+    aboutOpen.value = true
+    return
+  }
+
+  if (event.key === 'F2') {
+    event.preventDefault()
+    editorTabsRef.value?.startRenameActive()
+    return
+  }
 
   const mod = event.ctrlKey || event.metaKey
   if (!mod) return
@@ -367,7 +589,21 @@ function onShortcut(event: KeyboardEvent) {
     return
   }
 
-  if (event.altKey || event.shiftKey) return
+  if (event.altKey) return
+
+  if (event.shiftKey) {
+    if (key === 'd') {
+      event.preventDefault()
+      onDetect()
+    } else if (key === 'c') {
+      event.preventDefault()
+      void copyTerminal()
+    } else if (key === 'l') {
+      event.preventDefault()
+      clearConsole()
+    }
+    return
+  }
 
   if (key === 'n') {
     event.preventDefault()
@@ -378,6 +614,15 @@ function onShortcut(event: KeyboardEvent) {
   } else if (key === 'w') {
     event.preventDefault()
     closeActiveTab()
+  } else if (key === 'b') {
+    event.preventDefault()
+    onCompile()
+  } else if (key === 'u') {
+    event.preventDefault()
+    onUpload()
+  } else if (event.code === 'Backquote') {
+    event.preventDefault()
+    toggleTerminal()
   }
 }
 
@@ -463,6 +708,7 @@ function onCancel() {
         />
 
         <ConsoleOutput
+          v-show="terminalVisible"
           :text="consoleText"
           :variant="consoleVariant"
           @clear="clearConsole"
@@ -493,6 +739,26 @@ function onCancel() {
       @close="pickerOpen = false"
       @refresh="onRefreshSketches"
     />
+
+    <AppPrompt
+      :open="boardConfigOpen"
+      title="Configurar placa"
+      label="FQBN de la placa"
+      :initial="boardConfigValue"
+      placeholder="arduino:avr:uno"
+      confirm-label="Aplicar"
+      @confirm="onBoardConfigConfirm"
+      @cancel="boardConfigOpen = false"
+    />
+
+    <BoardInfoDialog
+      :open="boardInfoOpen"
+      :board="selectedBoard"
+      @close="boardInfoOpen = false"
+    />
+
+    <AboutKorDialog :open="aboutOpen" @close="aboutOpen = false" />
+    <LicenseDialog :open="licenseOpen" @close="licenseOpen = false" />
   </div>
 </template>
 

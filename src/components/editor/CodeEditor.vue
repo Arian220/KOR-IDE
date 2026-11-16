@@ -4,6 +4,8 @@ import { basicSetup } from 'codemirror'
 import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView } from '@codemirror/view'
 import { cpp } from '@codemirror/lang-cpp'
+import { redo, undo } from '@codemirror/commands'
+import { openSearchPanel } from '@codemirror/search'
 import { oneDark } from '@codemirror/theme-one-dark'
 import type { EditorCursor, ResolvedTheme } from '@/types/app'
 
@@ -164,9 +166,82 @@ onBeforeUnmount(() => {
   states.clear()
 })
 
+function selectedText(): string {
+  if (!view) return ''
+  const { from, to } = view.state.selection.main
+  return view.state.sliceDoc(from, to)
+}
+
+async function copySelection(): Promise<boolean> {
+  if (!view) return false
+  const text = selectedText() || view.state.doc.toString()
+  try {
+    await navigator.clipboard.writeText(text)
+    return true
+  } catch {
+    return false
+  }
+}
+
+async function cutSelection(): Promise<boolean> {
+  if (!view) return false
+  const { from, to } = view.state.selection.main
+  if (from === to) return false
+  const text = view.state.sliceDoc(from, to)
+  try {
+    await navigator.clipboard.writeText(text)
+  } catch {
+    return false
+  }
+  view.dispatch({ changes: { from, to, insert: '' } })
+  view.focus()
+  return true
+}
+
+async function pasteClipboard(): Promise<boolean> {
+  if (!view) return false
+  try {
+    const text = await navigator.clipboard.readText()
+    if (!text) return false
+    const { from, to } = view.state.selection.main
+    view.dispatch({
+      changes: { from, to, insert: text },
+      selection: { anchor: from + text.length },
+    })
+    view.focus()
+    return true
+  } catch {
+    return false
+  }
+}
+
+function runUndo() {
+  if (!view) return
+  undo(view)
+  view.focus()
+}
+
+function runRedo() {
+  if (!view) return
+  redo(view)
+  view.focus()
+}
+
+function openFind() {
+  if (!view) return
+  openSearchPanel(view)
+  view.focus()
+}
+
 defineExpose({
   getText: () => view?.state.doc.toString() ?? props.modelValue,
   focus: () => view?.focus(),
+  copySelection,
+  cutSelection,
+  pasteClipboard,
+  undo: runUndo,
+  redo: runRedo,
+  find: openFind,
 })
 </script>
 
