@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import ActionBar from '@/components/action/ActionBar.vue'
+import AppPrompt from '@/components/base/AppPrompt.vue'
 import AppToast from '@/components/base/AppToast.vue'
 import BoardSelector from '@/components/board/BoardSelector.vue'
 import ConsoleOutput from '@/components/console/ConsoleOutput.vue'
@@ -9,10 +10,12 @@ import CodeEditor from '@/components/editor/CodeEditor.vue'
 import EditorTabs from '@/components/editor/EditorTabs.vue'
 import AppMenuBar from '@/components/layout/AppMenuBar.vue'
 import MemoryBars from '@/components/memory/MemoryBars.vue'
+import SketchPicker from '@/components/sketch/SketchPicker.vue'
 import StatusBar from '@/components/status/StatusBar.vue'
 import { useArduino } from '@/composables/useArduino'
 import { useDiagram } from '@/composables/useDiagram'
 import { useEditor } from '@/composables/useEditor'
+import { useSketchFiles } from '@/composables/useSketchFiles'
 import { useTheme } from '@/composables/useTheme'
 import { useToast } from '@/composables/useToast'
 import { useWindowControls } from '@/composables/useWindowControls'
@@ -56,18 +59,42 @@ const {
 } = useArduino()
 const { show: showToast } = useToast()
 const windowControls = useWindowControls()
+const {
+  sketches,
+  loadingSketches,
+  sketchListError,
+  guardarTab,
+  guardarActivo,
+  guardarComo,
+  guardarTodo,
+  cargarSketches,
+  abrirSketch,
+} = useSketchFiles()
 
 const editorRef = ref<{ focus: () => void } | null>(null)
 const editorTabsRef = ref<{ startRenameActive: () => void } | null>(null)
+const saveAsOpen = ref(false)
+const saveAsName = ref('')
+const pickerOpen = ref(false)
 
 const menus = computed<AppMenuDefinition[]>(() => [
   {
     id: 'file',
     label: 'Archivo',
     items: [
-      { id: 'file.new', label: 'Nueva pestaña' },
-      { id: 'file.close', label: 'Cerrar pestaña', disabled: tabs.value.length <= 1 },
+      { id: 'file.new', label: 'Nuevo archivo', shortcut: 'Ctrl+N' },
+      { id: 'file.open', label: 'Abrir sketch…', shortcut: 'Ctrl+O' },
       { separator: true },
+      { id: 'file.save', label: 'Guardar', shortcut: 'Ctrl+S' },
+      { id: 'file.saveAs', label: 'Guardar como…', shortcut: 'Ctrl+Shift+S' },
+      { id: 'file.saveAll', label: 'Guardar todo', shortcut: 'Ctrl+Alt+S' },
+      { separator: true },
+      {
+        id: 'file.close',
+        label: 'Cerrar pestaña',
+        shortcut: 'Ctrl+W',
+        disabled: tabs.value.length <= 1,
+      },
       { id: 'file.exit', label: 'Salir' },
     ],
   },
@@ -126,7 +153,8 @@ const menus = computed<AppMenuDefinition[]>(() => [
 const statusDetail = computed(() => {
   const count = tabs.value.length
   const files = `${count} archivo${count === 1 ? '' : 's'}`
-  return `${files} · ${config.value.autosave ? 'Autoguardado' : 'Sin autoguardado'}`
+  const estado = activeTab.value?.sketchId ? 'guardado' : 'borrador'
+  return `${files} · ${estado} · ${config.value.autosave ? 'Sesión autoguardada' : 'Sesión sin autoguardado'}`
 })
 
 watch(generatedCode, (code) => {
@@ -144,7 +172,7 @@ function closeActiveTab() {
     showToast('No se puede cerrar la última pestaña.', 'info')
     return
   }
-  if (tab.content.trim().length > 0) {
+  if (tab.dirty) {
     const confirmed = window.confirm(`¿Cerrar "${tab.name}"? El contenido se descartará.`)
     if (!confirmed) return
   }
@@ -173,6 +201,18 @@ function onCommand(id: string) {
   switch (id) {
     case 'file.new':
       void onAddTab()
+      break
+    case 'file.open':
+      void onOpenSketches()
+      break
+    case 'file.save':
+      onSave()
+      break
+    case 'file.saveAs':
+      openSaveAs()
+      break
+    case 'file.saveAll':
+      void guardarTodo()
       break
     case 'file.close':
       closeActiveTab()
@@ -244,13 +284,110 @@ function onRenameTab(payload: { id: string; name: string }) {
   renameTab(payload.id, payload.name)
 }
 
-function onCompile() {
-  void compilar(editorText.value)
+function openSaveAs() {
+  const tab = activeTab.value
+  if (!tab) {
+    showToast('No hay un archivo activo para guardar.', 'info')
+    return
+  }
+  saveAsName.value = tab.name.replace(/\.ino$/i, '') || 'sketch'
+  saveAsOpen.value = true
 }
 
-function onUpload() {
-  void subir(editorText.value)
+function onSave() {
+  const tab = activeTab.value
+  if (!tab) {
+    showToast('No hay un archivo activo para guardar.', 'info')
+    return
+  }
+  if (!tab.sketchId) {
+    openSaveAs()
+    return
+  }
+  void guardarActivo()
 }
+
+async function onSaveAsConfirm(name: string) {
+  saveAsOpen.value = false
+  await guardarComo(name)
+}
+
+async function onOpenSketches() {
+  pickerOpen.value = true
+  await cargarSketches()
+}
+
+async function onSelectSketch(id: string) {
+  pickerOpen.value = false
+  await abrirSketch(id)
+}
+
+async function onRefreshSketches() {
+  await cargarSketches()
+}
+
+async function onCompile() {
+  const tab = activeTab.value
+  if (!tab) return
+  if (tab.sketchId) {
+    const saved = await guardarTab(tab)
+    if (!saved) return
+  }
+  await compilar(editorText.value, {
+    sketchId: tab.sketchId,
+    sketchName: tab.name,
+  })
+}
+
+async function onUpload() {
+  const tab = activeTab.value
+  if (tab?.sketchId) {
+    const saved = await guardarTab(tab)
+    if (!saved) return
+  }
+  await subir(editorText.value, {
+    sketchId: tab?.sketchId ?? null,
+    sketchName: tab?.name ?? 'sketch',
+  })
+}
+
+function onShortcut(event: KeyboardEvent) {
+  if (saveAsOpen.value || pickerOpen.value) return
+
+  const mod = event.ctrlKey || event.metaKey
+  if (!mod) return
+
+  const key = event.key.toLowerCase()
+
+  if (key === 's') {
+    event.preventDefault()
+    if (event.shiftKey) openSaveAs()
+    else if (event.altKey) void guardarTodo()
+    else onSave()
+    return
+  }
+
+  if (event.altKey || event.shiftKey) return
+
+  if (key === 'n') {
+    event.preventDefault()
+    void onAddTab()
+  } else if (key === 'o') {
+    event.preventDefault()
+    void onOpenSketches()
+  } else if (key === 'w') {
+    event.preventDefault()
+    closeActiveTab()
+  }
+}
+
+onMounted(() => {
+  document.addEventListener('keydown', onShortcut)
+})
+
+onBeforeUnmount(() => {
+  document.removeEventListener('keydown', onShortcut)
+})
 
 function onDetect() {
   void detectar()
@@ -335,6 +472,27 @@ function onCancel() {
 
     <StatusBar :label="status" :kind="statusKind" :detail="statusDetail" />
     <AppToast />
+
+    <AppPrompt
+      :open="saveAsOpen"
+      title="Guardar como"
+      label="Nombre del sketch"
+      :initial="saveAsName"
+      placeholder="blink.ino"
+      confirm-label="Guardar"
+      @confirm="onSaveAsConfirm"
+      @cancel="saveAsOpen = false"
+    />
+
+    <SketchPicker
+      :open="pickerOpen"
+      :sketches="sketches"
+      :loading="loadingSketches"
+      :error="sketchListError"
+      @select="onSelectSketch"
+      @close="pickerOpen = false"
+      @refresh="onRefreshSketches"
+    />
   </div>
 </template>
 

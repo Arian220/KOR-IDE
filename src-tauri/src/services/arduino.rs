@@ -154,7 +154,10 @@ pub async fn compile(
     request: CompileRequest,
     events: Channel<JobEvent>,
 ) -> Result<CompileResult, AppError> {
-    validate_compile_request(state, &request)?;
+    let mut request = request;
+    request.sketch_path = validate_compile_request(state, &request)?
+        .to_string_lossy()
+        .into_owned();
     let (cli, _) = resolve_cli(state).await?;
     let (job_id, token) = register_job(state, JobKind::Compile)?;
 
@@ -261,7 +264,10 @@ pub async fn upload(
     request: UploadRequest,
     events: Channel<JobEvent>,
 ) -> Result<UploadResult, AppError> {
-    validate_upload_request(state, &request)?;
+    let mut request = request;
+    request.sketch_path = validate_upload_request(state, &request)?
+        .to_string_lossy()
+        .into_owned();
     let (cli, _) = resolve_cli(state).await?;
     let (job_id, token) = register_job(state, JobKind::Upload)?;
 
@@ -395,22 +401,25 @@ fn send_event(events: &Channel<JobEvent>, event: JobEvent) {
     let _ = events.send(event);
 }
 
-fn validate_compile_request(state: &AppState, request: &CompileRequest) -> Result<(), AppError> {
+fn validate_compile_request(
+    state: &AppState,
+    request: &CompileRequest,
+) -> Result<PathBuf, AppError> {
+    let sketch_path = validate_sketch_path(state, &request.sketch_path)?;
     validate_fqbn(&request.fqbn)?;
-    validate_sketch_path(state, &request.sketch_path)?;
     validate_warnings(&request.warnings)?;
     validate_build_properties(&request.build_properties)?;
-    Ok(())
+    Ok(sketch_path)
 }
 
-fn validate_upload_request(state: &AppState, request: &UploadRequest) -> Result<(), AppError> {
+fn validate_upload_request(state: &AppState, request: &UploadRequest) -> Result<PathBuf, AppError> {
+    let sketch_path = validate_sketch_path(state, &request.sketch_path)?;
     validate_fqbn(&request.fqbn)?;
     validate_port(&request.port)?;
-    validate_sketch_path(state, &request.sketch_path)?;
     validate_build_properties(&request.build_properties)?;
     validate_programmer(&request.programmer)?;
     validate_baudrate(request.baudrate)?;
-    Ok(())
+    Ok(sketch_path)
 }
 
 pub fn validate_fqbn(value: &str) -> Result<(), AppError> {
@@ -485,10 +494,10 @@ fn validate_baudrate(value: Option<u32>) -> Result<(), AppError> {
 fn validate_sketch_path(state: &AppState, value: &str) -> Result<PathBuf, AppError> {
     let path = PathBuf::from(value);
     if path.is_absolute() {
-        let path = state.paths.ensure_inside_sketches(&path)?;
         if !path.exists() {
             return Err(AppError::SketchNotFound(value.to_string()));
         }
+        state.paths.ensure_inside_sketches(&path)?;
         return Ok(path);
     }
 
@@ -496,7 +505,8 @@ fn validate_sketch_path(state: &AppState, value: &str) -> Result<PathBuf, AppErr
     if id_re.is_match(value) {
         let dir = state.paths.sketch_dir(value);
         if dir.is_dir() {
-            return state.paths.ensure_inside_sketches(&dir);
+            state.paths.ensure_inside_sketches(&dir)?;
+            return Ok(dir);
         }
         return Err(AppError::SketchNotFound(value.to_string()));
     }
@@ -911,8 +921,35 @@ mod tests {
         std::fs::write(paths.sketch_ino(&id), "void setup() {}").unwrap();
 
         let state = AppState::new(paths, crate::models::AppConfig::default());
-        assert!(validate_sketch_path(&state, &id).is_ok());
+        let resolved = validate_sketch_path(&state, &id).unwrap();
+        assert!(resolved.is_absolute());
+        assert_eq!(resolved, sketch_dir);
         assert!(validate_sketch_path(&state, "no-es-un-uuid").is_err());
+    }
+
+    #[test]
+    fn resuelve_la_ruta_del_sketch_antes_de_compilar() {
+        let dir = tempfile::tempdir().unwrap();
+        let paths = crate::state::AppPaths::new(dir.path().to_path_buf());
+        paths.ensure().unwrap();
+
+        let id = uuid::Uuid::new_v4().to_string();
+        let sketch_dir = paths.sketch_dir(&id);
+        std::fs::create_dir_all(&sketch_dir).unwrap();
+        std::fs::write(paths.sketch_ino(&id), "void setup() {}").unwrap();
+
+        let state = AppState::new(paths, crate::models::AppConfig::default());
+        let request = CompileRequest {
+            sketch_path: id,
+            fqbn: "arduino:avr:uno".to_string(),
+            build_properties: vec![],
+            warnings: None,
+            clean: false,
+        };
+
+        let resolved = validate_compile_request(&state, &request).unwrap();
+        assert!(resolved.is_absolute());
+        assert_eq!(resolved, sketch_dir);
     }
 
     #[test]

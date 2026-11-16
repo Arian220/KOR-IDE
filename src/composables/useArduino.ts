@@ -6,6 +6,7 @@ import {
   esErrorCliAusente,
   mensajeDeError,
 } from '@/api'
+import type { ArduinoRunOptions } from '@/api'
 import { useToast } from '@/composables/useToast'
 import type { BoardListResponse, CommandResult, MemoryState } from '@/types/contract'
 import type { BoardInfo } from '@/types/app'
@@ -182,7 +183,7 @@ export function useArduino() {
     }
   }
 
-  async function compilar(codigo: string) {
+  async function compilar(codigo: string, options?: ArduinoRunOptions) {
     if (isBusy.value) return
 
     busyAction.value = 'compile'
@@ -194,6 +195,7 @@ export function useArduino() {
 
     try {
       const resultado = await arduinoApi.compilar(codigo, {
+        ...options,
         fqbn: fqbnSeleccionado(selectedPort.value),
         onJobId: (jobId) => {
           currentJobId.value = jobId
@@ -235,7 +237,7 @@ export function useArduino() {
     }
   }
 
-  async function subir(codigo: string) {
+  async function subir(codigo: string, options?: ArduinoRunOptions) {
     if (isBusy.value) return
 
     if (boards.value.length === 0) {
@@ -267,6 +269,7 @@ export function useArduino() {
 
     try {
       const resultado = await arduinoApi.subirAPlaca(codigo, puerto, {
+        ...options,
         fqbn: fqbnSeleccionado(puerto),
         onJobId: (jobId) => {
           currentJobId.value = jobId

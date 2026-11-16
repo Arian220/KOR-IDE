@@ -13,7 +13,14 @@ function createId(): string {
 }
 
 function createTab(name: string, content = '', cursor: EditorCursor | null = null): EditorTab {
-  return { id: createId(), name, content, cursor, dirty: false }
+  return {
+    id: createId(),
+    name,
+    content,
+    cursor,
+    dirty: content.trim().length > 0,
+    sketchId: null,
+  }
 }
 
 const storedSession = loadSession()
@@ -53,9 +60,6 @@ export function saveNow(): void {
     saveTimer = null
   }
   saveSession(snapshot())
-  tabs.value.forEach((tab) => {
-    tab.dirty = false
-  })
 }
 
 export function scheduleSave(): void {
@@ -119,7 +123,38 @@ function renameTab(id: string, name: string): void {
   const nextName = uniqueName(name, id)
   if (tab.name === nextName) return
   tab.name = nextName
+  tab.dirty = true
   scheduleSave()
+}
+
+function uniqueTabName(name: string, ignoreId?: string): string {
+  return uniqueName(name, ignoreId)
+}
+
+function markSaved(id: string, sketchId: string, name?: string): void {
+  const tab = tabs.value.find((candidate) => candidate.id === id)
+  if (!tab) return
+  tab.sketchId = sketchId
+  tab.dirty = false
+  if (name && tab.name !== name) tab.name = name
+  scheduleSave()
+}
+
+function openSketch(sketchId: string, name: string, content: string): EditorTab {
+  const existing = tabs.value.find((tab) => tab.sketchId === sketchId)
+  if (existing) {
+    activeTabId.value = existing.id
+    scheduleSave()
+    return existing
+  }
+
+  const tab = createTab(name, content)
+  tab.sketchId = sketchId
+  tab.dirty = false
+  tabs.value = [...tabs.value, tab]
+  activeTabId.value = tab.id
+  scheduleSave()
+  return tab
 }
 
 function setCursor(cursor: EditorCursor): void {
@@ -150,6 +185,9 @@ export function useEditor() {
     closeTab,
     selectTab,
     renameTab,
+    uniqueTabName,
+    markSaved,
+    openSketch,
     setCursor,
     saveNow,
   }

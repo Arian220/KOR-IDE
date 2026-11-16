@@ -86,12 +86,23 @@ export function loadSession(): KorSession | null {
     }
 
     seen.add(candidate.id)
+    const sketchId =
+      typeof candidate.sketchId === 'string' && candidate.sketchId.length > 0
+        ? candidate.sketchId
+        : null
+    const dirty =
+      sketchId === null
+        ? candidate.content.trim().length > 0
+        : typeof candidate.dirty === 'boolean'
+          ? candidate.dirty
+          : false
     tabs.push({
       id: candidate.id,
       name: candidate.name,
       content: candidate.content,
       cursor: sanitizeCursor(candidate.cursor),
-      dirty: false,
+      dirty,
+      sketchId,
     })
   }
 
@@ -114,7 +125,8 @@ export function saveSession(session: KorSession): void {
       name: tab.name,
       content: tab.content,
       cursor: tab.cursor,
-      dirty: false,
+      dirty: tab.dirty,
+      sketchId: tab.sketchId,
     })),
   })
 }

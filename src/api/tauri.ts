@@ -60,7 +60,24 @@ async function crearSketchGestionado(): Promise<string> {
   return sketch.id
 }
 
-async function prepararSketch(codigo: string, fqbn: string): Promise<string> {
+async function prepararSketch(
+  codigo: string,
+  fqbn: string,
+  options?: ArduinoRunOptions,
+): Promise<string> {
+  if (options?.sketchId) {
+    await invoke<TauriSketchSummary>('save_sketch', {
+      sketch: {
+        id: options.sketchId,
+        name: baseSketchName(options.sketchName ?? MANAGED_SKETCH_NAME),
+        content: codigo,
+        fqbn,
+        updated_at: new Date().toISOString(),
+      },
+    })
+    return options.sketchId
+  }
+
   for (let intento = 0; intento < 2; intento += 1) {
     let id = leerSketchGestionado()
     if (!id) id = await crearSketchGestionado()
@@ -86,6 +103,11 @@ async function prepararSketch(codigo: string, fqbn: string): Promise<string> {
   }
 
   throw new Error('No se pudo preparar el sketch para la operación.')
+}
+
+function baseSketchName(name: string): string {
+  const base = name.trim().replace(/\.ino$/i, '').trim()
+  return base.length > 0 ? base : 'sketch'
 }
 
 function desenvolverEvento(message: unknown): TauriJobEvent | null {
@@ -166,7 +188,7 @@ export const tauriApi: ArduinoApi = {
 
   async compilar(codigo: string, options?: ArduinoRunOptions): Promise<CommandResult> {
     const fqbn = options?.fqbn || DEFAULT_FQBN
-    const sketchId = await prepararSketch(codigo, fqbn)
+    const sketchId = await prepararSketch(codigo, fqbn, options)
     const events = crearCanal(options)
 
     try {
@@ -200,7 +222,7 @@ export const tauriApi: ArduinoApi = {
     options?: ArduinoRunOptions,
   ): Promise<CommandResult> {
     const fqbn = options?.fqbn || DEFAULT_FQBN
-    const sketchId = await prepararSketch(codigo, fqbn)
+    const sketchId = await prepararSketch(codigo, fqbn, options)
     const events = crearCanal(options)
 
     try {
@@ -233,5 +255,31 @@ export const tauriApi: ArduinoApi = {
 
   async cancelar(jobId: string): Promise<boolean> {
     return invoke<boolean>('cancel_job', { jobId })
+  },
+}
+
+export const sketchApi = {
+  list(): Promise<TauriSketchSummary[]> {
+    return invoke<TauriSketchSummary[]>('list_sketches')
+  },
+
+  read(id: string): Promise<TauriSketch> {
+    return invoke<TauriSketch>('read_sketch', { id })
+  },
+
+  save(sketch: TauriSketch): Promise<TauriSketchSummary> {
+    return invoke<TauriSketchSummary>('save_sketch', { sketch })
+  },
+
+  create(name: string): Promise<TauriSketch> {
+    return invoke<TauriSketch>('create_sketch', { name })
+  },
+
+  rename(id: string, name: string): Promise<TauriSketchSummary> {
+    return invoke<TauriSketchSummary>('rename_sketch', { id, name })
+  },
+
+  remove(id: string): Promise<boolean> {
+    return invoke<boolean>('delete_sketch', { id })
   },
 }

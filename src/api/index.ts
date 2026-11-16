@@ -1,4 +1,5 @@
 export { arduinoApi } from './client'
+export { sketchApi } from './tauri'
 export { CLI_NO_INSTALADO, esCancelado, esErrorCliAusente, mensajeDeError } from './errors'
 export type { ArduinoApi, ArduinoRunOptions } from './types'
 export {

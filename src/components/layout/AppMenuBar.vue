@@ -135,6 +135,7 @@ onBeforeUnmount(() => {
             >
               <span class="menu__check" aria-hidden="true">{{ entry.checked ? '✓' : '' }}</span>
               <span class="menu__label">{{ entry.label }}</span>
+              <span class="menu__shortcut">{{ entry.shortcut ?? '' }}</span>
             </button>
           </template>
         </div>
@@ -268,7 +269,7 @@ onBeforeUnmount(() => {
 
 .menu__item {
   display: grid;
-  grid-template-columns: 16px 1fr;
+  grid-template-columns: 16px 1fr auto;
   align-items: center;
   gap: var(--kor-space-2);
   width: 100%;
@@ -303,6 +304,12 @@ onBeforeUnmount(() => {
 
 .menu__label {
   min-width: 0;
+  white-space: nowrap;
+}
+
+.menu__shortcut {
+  color: var(--kor-text-muted);
+  font-size: var(--kor-text-xs);
   white-space: nowrap;
 }
 

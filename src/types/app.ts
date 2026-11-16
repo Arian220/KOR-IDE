@@ -13,6 +13,7 @@ export interface EditorTab {
   content: string
   cursor: EditorCursor | null
   dirty: boolean
+  sketchId: string | null
 }
 
 export interface KorConfig {
@@ -27,6 +28,13 @@ export interface KorSession {
   tabs: EditorTab[]
 }
 
+export interface SketchSummary {
+  id: string
+  name: string
+  updated_at: string
+  fqbn: string | null
+}
+
 export interface BoardInfo {
   port: string
   label: string
@@ -37,6 +45,7 @@ export interface BoardInfo {
 export interface AppMenuItem {
   id: string
   label: string
+  shortcut?: string
   disabled?: boolean
   checked?: boolean
 }

@@ -23,7 +23,7 @@ function isActive(tab: EditorTab) {
 
 function onClose(tab: EditorTab) {
   if (props.tabs.length <= 1) return
-  if (tab.content.trim().length > 0) {
+  if (tab.dirty) {
     const confirmed = window.confirm(`¿Cerrar "${tab.name}"? El contenido se descartará.`)
     if (!confirmed) return
   }
@@ -104,7 +104,12 @@ defineExpose({ startRenameActive })
       >
         {{ tab.name }}
       </button>
-      <span v-if="tab.dirty" class="tab__dirty" aria-label="Cambios sin guardar">●</span>
+      <span
+        v-if="tab.dirty || !tab.sketchId"
+        class="tab__dirty"
+        :title="tab.sketchId ? 'Cambios sin guardar' : 'Borrador sin guardar'"
+        :aria-label="tab.sketchId ? 'Cambios sin guardar' : 'Borrador sin guardar'"
+      >●</span>
       <button
         type="button"
         class="tab__close"

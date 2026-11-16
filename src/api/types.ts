@@ -2,6 +2,8 @@ import type { BoardListResponse, CliStatus, CommandResult } from '@/types/contra
 
 export interface ArduinoRunOptions {
   fqbn?: string
+  sketchId?: string | null
+  sketchName?: string
   onJobId?: (jobId: string) => void
   onProgress?: (stage: string) => void
   onOutput?: (chunk: string, stream: 'stdout' | 'stderr') => void
