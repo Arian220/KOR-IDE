@@ -152,5 +152,128 @@ where
 }
 
 pub fn find_executable(name: &str) -> Option<std::path::PathBuf> {
-    which::which(name).ok()
+    if let Ok(found) = which::which(name) {
+        return Some(found);
+    }
+
+    let file_name = if cfg!(target_os = "windows") && !name.ends_with(".exe") {
+        format!("{name}.exe")
+    } else {
+        name.to_string()
+    };
+
+    let mut dirs: Vec<std::path::PathBuf> = std::env::var_os("PATH")
+        .map(|value| std::env::split_paths(&value).collect())
+        .unwrap_or_default();
+    dirs.extend(fallback_search_dirs());
+
+    dirs.into_iter()
+        .map(|dir| dir.join(&file_name))
+        .find(|candidate| is_executable(candidate))
+}
+
+fn home_dir() -> Option<std::path::PathBuf> {
+    std::env::var_os("HOME")
+        .filter(|value| !value.is_empty())
+        .or_else(|| std::env::var_os("USERPROFILE").filter(|value| !value.is_empty()))
+        .map(std::path::PathBuf::from)
+}
+
+fn fallback_search_dirs() -> Vec<std::path::PathBuf> {
+    let mut dirs = Vec::new();
+
+    if let Some(home) = home_dir() {
+        dirs.push(home.join(".local").join("bin"));
+        dirs.push(home.join(".cargo").join("bin"));
+        dirs.push(home.join(".arduino15").join("bin"));
+        dirs.push(home.join("bin"));
+    }
+
+    if cfg!(target_os = "windows") {
+        if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+            let local = std::path::PathBuf::from(local);
+            dirs.push(local.join("Programs").join("arduino-cli"));
+            dirs.push(local.join("Programs").join("Arduino"));
+            dirs.push(local.join("Microsoft").join("WinGet").join("Links"));
+        }
+        if let Some(profile) = std::env::var_os("USERPROFILE") {
+            dirs.push(
+                std::path::PathBuf::from(profile)
+                    .join("scoop")
+                    .join("shims"),
+            );
+        }
+        if let Some(program_data) = std::env::var_os("ProgramData") {
+            dirs.push(
+                std::path::PathBuf::from(program_data)
+                    .join("chocolatey")
+                    .join("bin"),
+            );
+        }
+        dirs.push(std::path::PathBuf::from(r"C:\Program Files\Arduino"));
+    } else if cfg!(target_os = "macos") {
+        dirs.push(std::path::PathBuf::from("/opt/homebrew/bin"));
+        dirs.push(std::path::PathBuf::from("/usr/local/bin"));
+        dirs.push(std::path::PathBuf::from("/opt/local/bin"));
+        dirs.push(std::path::PathBuf::from("/usr/bin"));
+        dirs.push(std::path::PathBuf::from("/bin"));
+    } else {
+        dirs.push(std::path::PathBuf::from("/usr/local/bin"));
+        dirs.push(std::path::PathBuf::from("/usr/bin"));
+        dirs.push(std::path::PathBuf::from("/bin"));
+        dirs.push(std::path::PathBuf::from("/snap/bin"));
+    }
+
+    dirs
+}
+
+#[cfg(unix)]
+fn is_executable(path: &Path) -> bool {
+    use std::os::unix::fs::PermissionsExt;
+
+    path.metadata()
+        .map(|meta| meta.is_file() && meta.permissions().mode() & 0o111 != 0)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn is_executable(path: &Path) -> bool {
+    path.is_file()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn valida_ejecutables() {
+        let dir = tempfile::tempdir().unwrap();
+        let file = dir.path().join("arduino-cli");
+        std::fs::write(&file, b"").unwrap();
+
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o644)).unwrap();
+            assert!(!is_executable(&file));
+
+            std::fs::set_permissions(&file, std::fs::Permissions::from_mode(0o755)).unwrap();
+            assert!(is_executable(&file));
+        }
+
+        #[cfg(not(unix))]
+        assert!(is_executable(&file));
+
+        assert!(!is_executable(&dir.path().join("no-existe")));
+    }
+
+    #[test]
+    fn incluye_rutas_de_usuario() {
+        let dirs = fallback_search_dirs();
+        if let Some(home) = home_dir() {
+            assert!(dirs.contains(&home.join(".local").join("bin")));
+            assert!(dirs.contains(&home.join(".cargo").join("bin")));
+        }
+    }
 }
