@@ -31,8 +31,8 @@ estable para trazabilidad con [[Estrategia de pruebas]] y [[Contratos Tauri]].
 | RF-03 | La interfaz se reimplementa en Vue 3 y evoluciona según `docs/img/pantallaprincipal.svg`: header con menús sin barra nativa, acciones en el editor y terminal inferior (ADR-016). | Q29, Q30 |
 | RF-04 | Generación de código a partir de pines seleccionados en el diagrama SVG (salida, entrada, PWM), conservando la interacción actual. | Q36 |
 | RF-05 | Pestañas para múltiples archivos/sketches abiertos. | Q33 |
-| RF-06 | Autoguardado y persistencia del código entre sesiones. | Q32 |
-| RF-07 | Gestión local de sketches: crear, abrir, guardar, renombrar y eliminar. | Q32, Q33 |
+| RF-06 | Persistencia del código entre sesiones: restauración de pestañas y cursor, con guardado explícito en sketches. | Q32 |
+| RF-07 | Gestión local de sketches: crear, abrir, guardar, guardar como, guardar todo, renombrar y eliminar. | Q32, Q33 |
 
 ### 2.2 Integración con `arduino-cli`
 
@@ -124,7 +124,8 @@ detallan en [[Decisiones de arquitectura]]:
 4. Se acepta el `.dmg` sin firma/notarización y se documenta Gatekeeper (P-05).
 5. macOS mínimo soportado: 12 (P-04).
 6. Cores/librerías: instalar y listar, sin resolución de conflictos (P-06).
-7. Autoguardado en `<app_data>/sketches` (P-07).
+7. Persistencia en `<app_data>/sketches` (P-07); la sesión se restaura y el
+   guardado definitivo de sketches es explícito.
 8. `docs/` se versiona en Git (P-08).
 9. Paquete `kor`, bundle `com.loopi.kor` (P-09).
 10. Logs `info` en release y `debug` en desarrollo (P-10).

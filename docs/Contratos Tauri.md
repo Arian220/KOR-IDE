@@ -14,7 +14,8 @@ Convenciones:
 - Nombres de campos en `snake_case`; el frontend los consume igual.
 - Todos los comandos devuelven `Result<T, AppError>`.
 - Los flujos largos reciben un `Channel<JobEvent>` y devuelven un `JobId`.
-- Fechas en ISO-8601 UTC; rutas como `String` absolutas.
+- Fechas en ISO-8601 UTC; rutas como `String`. En compilación/carga,
+  `sketch_path` acepta un UUID de sketch o una ruta absoluta.
 
 ## 1. Tipos base
 
@@ -190,7 +191,7 @@ Reglas:
 ```rust
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct CompileRequest {
-    pub sketch_path: String,       // ruta absoluta dentro de <app_data>/sketches
+    pub sketch_path: String,       // UUID de sketch o ruta absoluta dentro de <app_data>/sketches
     pub fqbn: String,              // "arduino:avr:uno", "esp32:esp32:esp32doit-devkit-v1"
     pub build_properties: Vec<String>, // key=value opcionales
     pub warnings: Option<String>,  // "none" | "default" | "all"
@@ -243,6 +244,14 @@ Notas:
   **y** se emite `JobEvent::Failed` para quien solo escuche el canal.
 - Se usa `--format json` (o `--json` si la v1.6.0 lo requiere) y se conserva
   stdout/stderr crudos.
+- `sketch_path` puede ser un UUID o una ruta absoluta. Rust la resuelve a una
+  ruta absoluta lógica y valida que quede dentro de `<app_data>/sketches` antes
+  de invocar al CLI; el valor que recibe `arduino-cli` nunca es un UUID relativo.
+- `memory` se obtiene del `builder_result.executable_sections_size` del JSON
+  (`text`/`data`) o, como respaldo, del texto en inglés o español. El frontend
+  debe consumir este campo y no reparsear el `stdout`.
+- Si el JSON trae `compiler_out`/`compiler_err`, `stdout`/`stderr` contienen ese
+  texto del compilador; el JSON crudo no se expone en el resultado.
 
 ## 5. Carga
 
@@ -251,7 +260,7 @@ Notas:
 ```rust
 #[derive(Clone, Debug, serde::Deserialize)]
 pub struct UploadRequest {
-    pub sketch_path: String,
+    pub sketch_path: String,       // UUID de sketch o ruta absoluta dentro de <app_data>/sketches
     pub fqbn: String,
     pub port: String,
     pub compile_first: bool,       // false = subir sin recompilar
@@ -277,6 +286,11 @@ pub struct UploadResult {
     pub fqbn: String,
 }
 ```
+
+`upload` también resuelve `sketch_path` a una ruta absoluta antes de invocar al
+CLI. Cuando `compile_first = true`, la salida de compilación incluye el texto de
+memoria; el frontend lo usa como respaldo para actualizar las barras porque
+`UploadResult` no tiene un campo `memory` estructurado.
 
 ## 6. Sketches
 
@@ -313,9 +327,19 @@ Reglas:
 
 - `id` generado por Rust (UUID v4) y validado como `[a-f0-9-]{36}`.
 - `name` limitado a 120 caracteres; se sanitiza para nombre de archivo.
-- Todas las rutas se canonicalizan y deben quedar dentro de
-  `<app_data>/sketches`. Si no, `PathNotAllowed`.
-- Escritura atómica: escribir `*.tmp` y renombrar.
+- Disposición en disco:
+  `<app_data>/sketches/<id>/<id>.ino` y
+  `<app_data>/sketches/<id>/sketch.json` con `id`, `name`, `fqbn` y
+  `updated_at`. No existe `index.json`; `list_sketches` escanea las carpetas,
+  ignora las que no tienen `.ino` y ordena por `updated_at`.
+- `create_sketch` crea la carpeta, un `.ino` con la plantilla mínima y
+  `sketch.json`. `save_sketch` escribe el contenido en el `.ino` existente y
+  actualiza el nombre y la fecha en `sketch.json`.
+- `export_sketch` exige una ruta destino absoluta cuyo directorio padre exista;
+  si el destino es un directorio, escribe `<name>.ino` dentro.
+- Todas las rutas se validan para quedar dentro de `<app_data>/sketches`. Si no,
+  `PathNotAllowed`.
+- Escritura atómica: escribir `.<nombre>.<uuid>.tmp` y renombrar.
 
 ## 7. Cores y librerías
 

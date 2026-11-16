@@ -48,7 +48,7 @@ responsable humano el 2026-11-15 y se incorporan al cuerpo de decisiones.
   v1.6.0 (Q11).
 - **Decisión:** al primer arranque, si no hay CLI configurado, se descarga el
   binario oficial para el SO/arquitectura desde GitHub Releases, se verifica
-  SHA-256 y se guarda en `<app_data>/bin`. Se permite configurar una ruta manual.
+  SHA-256 y se guarda en `<app_data>/cli`. Se permite configurar una ruta manual.
 - **Consecuencias:** requiere red en el primer uso; sin red y sin CLI, la app
   muestra guía y permite ruta manual. La versión queda fijada hasta actualizar
   el contrato.
@@ -136,9 +136,10 @@ responsable humano el 2026-11-15 y se incorporan al cuerpo de decisiones.
 ## ADR-013 — Rust es dueño del estado; Vue mantiene una réplica
 
 - **Estado:** Aceptada
-- **Decisión:** configuración, jobs y sketches viven en Rust. Vue mantiene
-  stores Pinia sincronizadas mediante respuestas de comandos y eventos. No hay
-  escritura directa de archivos desde el frontend.
+- **Decisión:** configuración, jobs y sketches viven en Rust. Vue mantiene una
+  réplica reactiva en composables (los stores Pinia siguen planificados) que se
+  sincroniza mediante respuestas de comandos y eventos. No hay escritura directa
+  de archivos desde el frontend.
 - **Consecuencias:** una sola fuente de verdad; el frontend es reemplazable sin
   perder datos.
 
@@ -182,6 +183,55 @@ responsable humano el 2026-11-15 y se incorporan al cuerpo de decisiones.
   [[UI y UX]], [[Design System]] y [[Estructura del proyecto]].
 
 
+## ADR-017 — Sketches con UUID, metadatos y guardado explícito
+
+- **Estado:** Aceptada
+- **Contexto:** la UI necesita varios archivos con nombre visible, distinguir
+  borradores y compilar tanto archivos guardados como pestañas nuevas.
+- **Decisión:** cada sketch vive en `<app_data>/sketches/<uuid>/`; el contenido
+  se escribe en `<uuid>.ino` (o en el primer `.ino` existente) y los metadatos en
+  `sketch.json` (`id`, `name`, `fqbn`, `updated_at`). El `id` es el UUID; el
+  nombre visible solo vive en los metadatos. `list_sketches` escanea las carpetas
+  y ordena por `updated_at`; no hay `index.json`. En el frontend, una pestaña
+  nueva tiene `sketchId = null` y se marca como borrador. «Guardar» en un
+  borrador pide nombre y crea el sketch; «Guardar como» crea un sketch nuevo;
+  «Guardar todo» guarda todas las pestañas. La sesión (`kor.session.v1`)
+  restaura contenido, `sketchId` y `dirty` desde `localStorage`, pero el
+  contenido definitivo se persiste en Rust al guardar.
+- **Consecuencias:** el nombre en disco es el UUID; para compartir el archivo se
+  usa `export_sketch`. No se reconstruye ningún índice: una carpeta sin `.ino`
+  se ignora. Compilar un borrador usa el sketch gestionado `KOR Sketch`;
+  compilar un archivo guardado sincroniza y usa su propio `sketchId`.
+
+## ADR-018 — Memoria Flash/SRAM desde el resultado estructurado
+
+- **Estado:** Aceptada
+- **Contexto:** el backend ya devolvía `CompileResult.memory`, pero el frontend
+  lo descartaba e intentaba leer la memoria del `stdout` JSON con expresiones de
+  texto, por lo que las barras quedaban en 0.
+- **Decisión:** `compile` parsea la salida `--format json` o de texto y devuelve
+  `CompileResult.memory` (`MemoryUsage`). El frontend mapea ese objeto a
+  `MemoryState` y usa `parsearMemoria` solo como respaldo para `upload` o
+  respuestas sin memoria. El respaldo entiende inglés/español y JSON.
+- **Consecuencias:** una sola fuente de verdad para la memoria, independiente del
+  idioma del CLI. Se mantienen pruebas de parseo JSON y de texto. `UploadResult`
+  no incluye memoria: se obtiene del texto de compilación de `compile --upload`.
+
+## ADR-019 — El backend resuelve la ruta absoluta del sketch antes del CLI
+
+- **Estado:** Aceptada
+- **Contexto:** al compilar con un UUID de sketch, `arduino-cli` recibía el UUID
+  relativo y lo resolvía contra el directorio de trabajo (`src-tauri`), lo que
+  producía «no such file or directory».
+- **Decisión:** `validate_compile_request` y `validate_upload_request` devuelven
+  un `PathBuf` con la ruta lógica absoluta; `compile` y `upload` reemplazan
+  `request.sketch_path` antes de construir los argumentos. Se acepta un UUID o
+  una ruta absoluta; ambas deben quedar dentro de `<app_data>/sketches`. No se
+  canonicaliza para no introducir el prefijo `\\?\` en Windows.
+- **Consecuencias:** `arduino-cli` recibe siempre una ruta absoluta
+  independiente del cwd. La resolución está cubierta por
+  `resuelve_la_ruta_del_sketch_antes_de_compilar`.
+
 ---
 
 ## Decisiones confirmadas (antes pendientes)
@@ -196,7 +246,7 @@ Confirmadas por el responsable humano el 2026-11-15. Se consideran cerradas.
 | P-04 | macOS mínimo | Soportar macOS 12 en adelante. |
 | P-05 | `.dmg` sin notarizar | Aceptar el aviso de Gatekeeper y documentarlo. |
 | P-06 | Alcance de cores/librerías en v1 | Instalar y listar; no resolver conflictos de versiones. |
-| P-07 | Autoguardado | Guardar en `<app_data>/sketches`, no en Documentos. |
+| P-07 | Autoguardado | Los sketches se guardan en `<app_data>/sketches`, no en Documentos; la sesión se restaura y el guardado en sketches es explícito. |
 | P-08 | Versionado de `docs/` | Quitar `docs/` de `.gitignore` para versionar el baúl. |
 | P-09 | Nombre del paquete | `kor` / `com.loopi.kor`. |
 | P-10 | Nivel de logs por defecto | `info` en release, `debug` en desarrollo. |

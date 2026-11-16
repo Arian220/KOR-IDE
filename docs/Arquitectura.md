@@ -58,9 +58,10 @@ invoca comandos Tauri y escucha eventos; no se habilitan plugins de `fs` ni
 ```text
 src/
 ├── pages/         # composición de pantalla del IDE
-├── components/    # editor, consola, selector de placa, diagrama SVG, barras
-├── composables/   # useArduino, useEditor, useSketches, useJobs, useConfig
-├── stores/        # Pinia: config, editor/tabs, boards, jobs, sketches
+├── components/    # editor, consola, selector de placa, diagrama SVG, barras,
+│                  # diálogos y selector de sketches
+├── composables/   # useArduino, useEditor, useSketchFiles, useDiagram,
+│                  # useTheme, useToast, useWindowControls
 ├── api/           # cliente de comandos Tauri (adaptador único)
 ├── types/         # tipos espejo de los contratos Rust
 └── assets/        # estilos, tokens, iconos
@@ -68,7 +69,8 @@ src/
 
 - **`api/`** es el único módulo que importa `@tauri-apps/api`. El resto nunca
   llama `invoke` directamente.
-- **Pinia** gestiona estado global. Los composables encapsulan flujos.
+- **Composition API con composables** gestiona el estado de la UI; los stores
+  Pinia planificados todavía no existen.
 - **CodeMirror** se instala por pnpm; no se usan CDN ni `esm.sh`.
 
 Detalle en [[Estructura del proyecto]] y [[UI y UX]].
@@ -77,20 +79,20 @@ Detalle en [[Estructura del proyecto]] y [[UI y UX]].
 
 ```text
 src-tauri/src/
-├── main.rs            # arranque Tauri, registro de comandos, estado
-├── lib.rs             # re-exports y setup
-├── commands/          # capa IPC: validación superficial + llamada a services
-├── services/          # lógica de dominio (arduino, jobs, config, sketches)
-├── infra/             # procesos, archivos, descarga, logging
+├── main.rs            # entrypoint del binario
+├── lib.rs             # setup Tauri, estado y registro de comandos
+├── commands/          # capa IPC: boards, cli, compile, config, sketches, upload
+├── services/          # lógica de dominio (arduino, config, sketches)
+├── infra/             # procesos, archivos, logging
 ├── models/            # tipos serializables (DTO) y enums de error
-└── state.rs           # AppState compartido
+└── state.rs           # AppPaths y AppState compartido
 ```
 
 - **`commands/`** no contiene lógica de negocio; convierte DTO ↔ dominio y
   devuelve `Result<T, AppError>`.
 - **`services/`** es testeable sin Tauri. Aquí viven la construcción de
   argumentos, el parseo de salidas y la orquestación de jobs.
-- **`infra/`** encapsula `tokio::process`, `std::fs`, descarga HTTP y logging.
+- **`infra/`** encapsula `tokio::process`, `std::fs` y logging.
 - **`models/`** define los tipos del contrato con `serde`.
 
 Detalle en [[Contratos Tauri]] y [[Modelo de estado y datos]].
@@ -111,9 +113,12 @@ Usuario → Vue (Compilar)
   → Vue actualiza consola, resalta errores, barras de memoria
 ```
 
-- El sketch se escribe antes de compilar en el directorio de datos.
+- El sketch se escribe antes de compilar en el directorio de datos y el backend
+  resuelve su ruta absoluta antes de invocar `arduino-cli`.
 - La cancelación dispara `cancel_job(job_id)` y mata el proceso hijo.
 - Si el CLI falla, `CompileFailed` incluye stdout/stderr y diagnósticos.
+- La memoria Flash/SRAM viaja en `CompileResult.memory`; la UI no reparsea el
+  JSON crudo.
 
 ### 5.2 Detectar placas
 
@@ -135,11 +140,17 @@ Vue (Subir) → detectBoards → selección de placa/puerto
     → eventos de progreso y resultado
 ```
 
-### 5.4 Autoguardado
+### 5.4 Archivos, borradores y sesión
 
-- Cambios en el editor se debouncean (p. ej. 800 ms) en `useEditor`.
-- Vue llama `save_sketch`; Rust escribe de forma atómica (temp + rename).
-- Al abrir la app se restauran pestañas y contenido desde el índice de sketches.
+- Una pestaña nueva tiene `sketchId = null` y es un borrador.
+- «Guardar» en un archivo guardado llama `save_sketch`; en un borrador pide
+  nombre y llama `create_sketch` + `save_sketch`.
+- «Guardar como» crea un sketch nuevo y vincula la pestaña; «Guardar todo»
+  recorre las pestañas abiertas.
+- La sesión (pestañas, contenido, cursor, `dirty`, `sketchId`) se debouncea en
+  `localStorage` (~800 ms) para restaurarse al abrir la app. El contenido
+  definitivo vive en `<app_data>/sketches` solo tras guardar.
+- Al compilar o subir un borrador se usa el sketch gestionado `KOR Sketch`.
 
 ## 6. Gestión de procesos y concurrencia
 
@@ -158,14 +169,16 @@ Vue (Subir) → detectBoards → selección de placa/puerto
 
 | Dato | Ubicación | Formato |
 |---|---|---|
-| Configuración | `<app_data>/config/config.json` | JSON |
-| Sketches | `<app_data>/sketches/<id>/` | `.ino` + metadatos |
-| Índice de sketches | `<app_data>/sketches/index.json` | JSON |
-| CLI descargado | `<app_data>/bin/arduino-cli[.exe]` | binario |
-| Caché de descargas | `<app_data>/cache/` | temporal |
-| Logs | `<app_data>/logs/kor.log` | texto JSON-lines |
+| Configuración | `<app_data>/config.json` | JSON |
+| Sketches | `<app_data>/sketches/<id>/` | `<id>.ino` + `sketch.json` |
+| CLI descargado | `<app_data>/cli/arduino-cli[.exe]` | binario |
+| Logs | `<app_data>/logs/kor.log` | texto con `tracing` |
+| Temporales | `<app_data>/tmp/` | temporal |
 
-`<app_data>` se resuelve con Tauri `app_data_dir()` (ver [[Modelo de estado y datos]]).
+No hay índice persistente de sketches: la lista se obtiene escaneando
+`<app_data>/sketches`. El build de `arduino-cli` usa su propio directorio de
+caché. `<app_data>` se resuelve con Tauri `app_data_dir()` (ver
+[[Modelo de estado y datos]]).
 
 ## 8. Seguridad
 
@@ -176,7 +189,8 @@ Resumen; detalle en [[Seguridad]].
 - CSP estricta sin `unsafe-eval`; sin recursos remotos.
 - Descarga de `arduino-cli` por HTTPS, versión fijada y SHA-256 verificado.
 - Puerto validado con regex por SO y pasado como argumento separado.
-- Rutas de sketches canonicalizadas dentro de `<app_data>/sketches`.
+- Rutas de sketches resueltas y validadas dentro de `<app_data>/sketches` antes
+  de invocar al CLI.
 
 ## 9. Observabilidad
 

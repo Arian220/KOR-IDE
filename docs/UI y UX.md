@@ -53,15 +53,18 @@ Diseño de referencia: `docs/img/pantallaprincipal.svg` (ADR-016).
 - Las barras de memoria viven al pie del panel izquierdo y permanecen
   visibles con 0 % hasta que el CLI reporte datos.
 - El diagrama SVG conserva la interacción actual (selección de pines y modo).
-- Las pestañas muestran archivo activo, indicador `dirty` y cierre.
+- Las pestañas muestran archivo activo, indicador de cambios y cierre. Una
+  pestaña sin `sketchId` es un borrador y se distingue de un archivo guardado con
+  cambios pendientes.
 - La barra de estado puede mostrar «Listo», «Compilando», «Cargando»,
-  «Sin placa», «CLI no disponible».
+  «Sin placa», «CLI no disponible», el estado de guardado y la sesión
+  autoguardada.
 
 ### 2.1 Menú principal
 
 | Menú | Acciones |
 |---|---|
-| Archivo | Nueva pestaña, cerrar pestaña, salir |
+| Archivo | Nuevo archivo (`Ctrl+N`), Abrir sketch… (`Ctrl+O`), Guardar (`Ctrl+S`), Guardar como… (`Ctrl+Shift+S`), Guardar todo (`Ctrl+Alt+S`), Cerrar pestaña (`Ctrl+W`), Salir |
 | Editar | Renombrar pestaña, copiar código |
 | Placas | Detectar placas, subir a la placa |
 | Ejecutar | Compilar, cancelar operación |
@@ -70,18 +73,24 @@ Diseño de referencia: `docs/img/pantallaprincipal.svg` (ADR-016).
 | Acerca de | Información de la versión |
 
 Los menús se cierran con `Escape` o al hacer clic fuera. Las acciones no
-disponibles se muestran deshabilitadas.
+disponibles se muestran deshabilitadas. Los atajos se muestran en una columna a
+la derecha de cada acción.
 
 ## 3. Flujos
 
 ### 3.1 Compilar
 
 1. Usuario pulsa **Compilar**.
-2. Botón → «Compilando…» y deshabilitado; se inicia el job.
-3. La terminal se limpia al iniciar (P-02) y recibe salida en streaming.
-4. Al terminar:
-   - Éxito: terminal con salida, diagnósticos resaltados, memoria si existe.
+2. Las pestañas guardadas se sincronizan con su sketch; los borradores usan el
+   sketch gestionado `KOR Sketch`.
+3. Botón → «Compilando…» y deshabilitado; se inicia el job.
+4. La terminal se limpia al iniciar (P-02) y recibe salida en streaming.
+5. Al terminar:
+   - Éxito: terminal con salida, diagnósticos resaltados, memoria actualizada.
    - Error: terminal en rojo, diagnósticos con enlace a línea, botón habilitado.
+
+La memoria Flash/SRAM se toma de `CompileResult.memory` (JSON estructurado del
+CLI); si no está disponible, se usa el parseo de texto como respaldo.
 
 ### 3.2 Subir
 
@@ -103,6 +112,26 @@ disponibles se muestran deshabilitadas.
 - Muestra puerto, modelo, FQBN y VID/PID cuando exista (RF-09).
 - Sin placa: guía con pasos (cable, drivers, permisos, CLI).
 
+### 3.5 Archivos y sketches
+
+- **Nuevo archivo**: crea una pestaña borrador (`sketchId = null`) con nombre
+  temporal y contenido vacío.
+- **Abrir sketch…**: lista los sketches guardados en Rust y reutiliza la pestaña
+  si el sketch ya está abierto.
+- **Guardar**:
+  - Archivo guardado: sincroniza contenido y nombre con su sketch.
+  - Borrador: abre un diálogo para elegir nombre; al confirmar se crea el
+    sketch y la pestaña deja de ser borrador.
+- **Guardar como…**: crea un sketch nuevo con el nombre indicado y vincula la
+  pestaña al nuevo `sketchId`.
+- **Guardar todo**: guarda todas las pestañas; los borradores conservan su
+  nombre actual.
+- **Cerrar pestaña**: si hay cambios sin guardar, pide confirmación antes de
+  descartarlos.
+- Al iniciar la app se restaura la sesión (pestañas, `sketchId`, contenido y
+  estado `dirty`) desde `localStorage`; el contenido definitivo vive en Rust
+  solo cuando el usuario guarda.
+
 ## 4. Estados de UI
 
 | Estado | Elemento | Comportamiento |
@@ -114,7 +143,8 @@ disponibles se muestran deshabilitadas.
 | Error compilación | terminal + editor | Rojo, diagnósticos clicables |
 | Error carga | terminal | Rojo con detalle |
 | Cancelado | terminal | Mensaje neutro |
-| Sketch sin guardar | pestaña | Punto/asterisco |
+| Borrador sin guardar | pestaña | Indicador ● y título «Borrador sin guardar» |
+| Cambios sin guardar | pestaña | Indicador ● y título «Cambios sin guardar» |
 | Tema | raíz | Claro/oscuro/sistema |
 
 ## 5. Editor
@@ -123,8 +153,9 @@ disponibles se muestran deshabilitadas.
   `@codemirror/theme-one-dark`).
 - Numeración, resaltado C++, búsqueda, autocompletado básico.
 - Marcadores de diagnóstico: subrayado y gutter; clic lleva a línea/columna.
-- Autoguardado con debounce (~800 ms) y guardado al cerrar pestaña.
-- Restauración de pestañas y cursor al abrir la app.
+- Autoguardado de sesión con debounce (~800 ms) en `localStorage` para restaurar
+  pestañas y cursor; el guardado en sketches de Rust es explícito mediante
+  Archivo → Guardar / Guardar como / Guardar todo.
 
 ## 6. Terminal
 
@@ -182,7 +213,11 @@ Aplicar `make-interfaces-feel-better`:
 | `MemoryBars.vue` | Flash/SRAM |
 | `ConsoleOutput.vue` | Terminal inferior: streaming, copiar, limpiar |
 | `ActionBar.vue` | Detectar/Compilar/Subir/Cancelar |
+| `AppDialog.vue` | Diálogo modal base para confirmaciones y avisos |
+| `AppPrompt.vue` | Diálogo modal para pedir un nombre (Guardar como) |
+| `SketchPicker.vue` | Selector modal de sketches guardados |
 | `AppToast.vue` | Avisos no bloqueantes |
+| `useSketchFiles.ts` | Guardar, guardar como, guardar todo, listar y abrir sketches |
 | `useWindowControls.ts` | Puente Tauri/Electron para minimizar, maximizar y cerrar |
 
 ## 12. Textos

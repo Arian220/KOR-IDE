@@ -4,7 +4,7 @@ tags: [kor, estructura, carpetas]
 
 # Estructura del proyecto
 
-## 1. Estado actual (fase 2)
+## 1. Estado actual (integración Tauri)
 
 ```text
 loopiIDE/
@@ -14,23 +14,41 @@ loopiIDE/
 ├── preload.js                     # puente window.api temporal
 ├── index.html                     # entrypoint Vite + tema pre-mount
 ├── src/
-│   ├── api/                       # client.ts, storage.ts, errors.ts
+│   ├── api/                       # client.ts, errors.ts, index.ts, storage.ts,
+│   │                              # tauri.ts, types.ts
 │   ├── components/
 │   │   ├── action/                # ActionBar.vue
-│   │   ├── base/                  # AppButton.vue, AppToast.vue
+│   │   ├── base/                  # AppButton.vue, AppDialog.vue, AppPrompt.vue,
+│   │   │                          # AppToast.vue
 │   │   ├── board/                 # BoardSelector.vue
 │   │   ├── console/               # ConsoleOutput.vue
 │   │   ├── diagram/               # ArduinoUnoSvg.vue, pinCoordinates.ts
 │   │   ├── editor/                # CodeEditor.vue, EditorTabs.vue
 │   │   ├── layout/                # AppMenuBar.vue
 │   │   ├── memory/                # MemoryBars.vue
+│   │   ├── sketch/                # SketchPicker.vue
 │   │   └── status/                # StatusBar.vue
 │   ├── composables/               # useArduino, useDiagram, useEditor,
-│   │                              # useTheme, useToast, useWindowControls
+│   │                              # useSketchFiles, useTheme, useToast,
+│   │                              # useWindowControls
 │   ├── pages/IdePage.vue
-│   ├── types/                     # app.ts, contract.ts, legacy.d.ts
+│   ├── types/                     # app.ts, contract.ts, legacy.d.ts, tauri.ts
 │   ├── utils/                     # codegen.ts, memory.ts
 │   └── assets/                    # arduino-uno.svg, styles/
+├── src-tauri/
+│   ├── Cargo.toml
+│   ├── tauri.conf.json
+│   ├── capabilities/
+│   ├── icons/
+│   └── src/
+│       ├── main.rs
+│       ├── lib.rs
+│       ├── state.rs
+│       ├── models/                # config, error, board, compile, upload,
+│       │                          # sketch, job
+│       ├── commands/              # boards, cli, compile, config, sketches, upload
+│       ├── services/              # arduino, config, sketches
+│       └── infra/                 # fs, logging, process
 ├── package.json
 ├── pnpm-lock.yaml
 ├── pnpm-workspace.yaml
@@ -39,7 +57,12 @@ loopiIDE/
 └── dist/                          # build (ignorado)
 ```
 
-`temp_sketch/` y `package-lock.json` ya no existen.
+`temp_sketch/` y `package-lock.json` ya no existen. Los archivos de usuario
+viven en `<app_data>` (ver [[Modelo de estado y datos]]).
+
+Los nuevos componentes de archivos (`AppDialog`, `AppPrompt`, `SketchPicker` y
+`useSketchFiles`) implementan Guardar, Guardar como, Guardar todo y Abrir
+sketch sin añadir stores todavía.
 
 ## 2. Estado objetivo
 
@@ -160,7 +183,7 @@ kor/
 | `main.js` | `src-tauri/src/main.rs` + `tauri.conf.json` | 3 |
 | `preload.js` | `src-tauri/src/commands/*` + `src/api/*` | 3–4 |
 | `arduino-uno.svg` | `src/assets/arduino-uno.svg` | 1 |
-| `temp_sketch/` | `<app_data>/sketches` + `cache/build` | 3–4 |
+| `temp_sketch/` | `<app_data>/sketches` | 3–4 |
 | `window.api` | `invoke`/`Channel` vía `src/api` | 4 |
 | `localStorage` (fase 2) | `config.json` + sketches en Rust | 4 |
 | Imports `esm.sh` | dependencias pnpm (`codemirror`, `@codemirror/lang-cpp`, `@codemirror/theme-one-dark`) | 1 |

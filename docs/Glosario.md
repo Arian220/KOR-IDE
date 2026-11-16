@@ -9,6 +9,10 @@ tags: [kor, glosario]
 | **KOR** | Nombre de la aplicación (antes «Mi IDE Arduino» / Loopi IDE). |
 | **FQBN** | Fully Qualified Board Name; identifica placa y core, p. ej. `arduino:avr:uno`. |
 | **Sketch** | Proyecto de Arduino; carpeta con un `.ino` del mismo nombre. |
+| **Borrador** | Pestaña abierta con `sketchId = null`; aún no se ha guardado como sketch en Rust. |
+| **Guardar como** | Acción que crea un sketch nuevo con el nombre indicado y vincula la pestaña a él. |
+| **Sketch gestionado** | Sketch interno `KOR Sketch` usado para compilar o subir pestañas que todavía son borradores. |
+| **Flash** | Memoria de programa del microcontrolador; se reporta junto a SRAM tras compilar. |
 | **Core** | Paquete de soporte de una familia de placas (p. ej. `esp32:esp32`). |
 | **CLI** | `arduino-cli`, herramienta de línea de comandos que compila y carga. |
 | **Job** | Operación asíncrona (compilar, subir, instalar) con id y cancelación. |

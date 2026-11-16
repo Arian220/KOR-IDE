@@ -10,8 +10,8 @@ en Vue y dónde se persiste.
 ## 1. Principio
 
 - **Rust**: fuente de verdad de configuración, sketches, jobs y rutas.
-- **Vue (Pinia)**: réplica reactiva para renderizar; se hidrata al arrancar y se
-  actualiza con respuestas y eventos.
+- **Vue (composables)**: réplica reactiva para renderizar; se hidrata al
+  arrancar y se actualiza con respuestas y eventos.
 
 ## 2. Estado del backend (`AppState`)
 
@@ -51,28 +51,33 @@ Reglas:
 - `cancel_job` es idempotente; si ya terminó, devuelve `false`.
 - Al cerrar la app se cancelan los jobs activos y se espera su finalización.
 
-## 3. Estado del frontend (Pinia)
+## 3. Estado del frontend
 
-| Store | Contenido | Persistencia |
+La UI usa Composition API con composables; todavía no hay stores Pinia.
+
+| Composable | Contenido | Persistencia |
 |---|---|---|
-| `config` | tema, FQBN y puerto recientes, autosave | Rust (`config.json`) |
-| `editor` | pestañas abiertas, archivo activo, cursor, dirty | Rust (sketches) + sesión UI |
-| `boards` | última detección, placa/puerto seleccionado | efímero |
-| `jobs` | job activo, estado, progreso, consola | efímero |
-| `sketches` | índice de sketches | Rust (`index.json`) |
-
-> **Transición (fases 2–3):** todavía no existen Pinia ni el backend Rust. La
-> configuración y la sesión se persisten con un adaptador temporal en
-> `src/api/storage.ts` sobre `localStorage` (`kor.config.v1`,
-> `kor.session.v1`). En la fase 4 se sustituye por los comandos Tauri; la UI no
-> cambia.
+| `useEditor` | pestañas abiertas, pestaña activa, cursor, `dirty`, `sketchId` | `localStorage` (`kor.session.v1`); contenido definitivo en Rust al guardar |
+| `useSketchFiles` | lista de sketches, carga y errores de guardado/exportación | Rust (`list_sketches`, `read_sketch`, `save_sketch`, `create_sketch`) |
+| `useArduino` | estado del CLI, placas, puerto seleccionado, job, consola y memoria | efímero |
+| `useTheme` | tema claro/oscuro/sistema | `localStorage` (`kor.config.v1`, adaptador temporal) |
+| `useToast` | avisos no bloqueantes | efímero |
 
 Reglas:
 
-- El autoguardado definitivo va a Rust. Durante las fases 2–3 se usa
-  `localStorage` como adaptador temporal (ver nota).
+- `EditorTab` contiene `id` (identificador de pestaña), `sketchId` (sketch en
+  Rust o `null`), `name`, `content`, `cursor` y `dirty`.
+- `sketchId === null` significa **borrador**. Guardar un borrador pide nombre y
+  crea el sketch; «Guardar como» crea uno nuevo; «Guardar todo» guarda todas las
+  pestañas.
+- La sesión restaura hasta 50 pestañas con su `sketchId` y `dirty`; el contenido
+  se conserva aunque la app se cierre, pero el guardado definitivo en Rust es
+  explícito (Archivo → Guardar).
 - La selección de puerto se pierde al reiniciar (se vuelve a detectar).
 - La consola conserva la salida de la última operación hasta que se inicia otra.
+- Rust es dueño de configuración, sketches, jobs y rutas. La migración completa
+  de la configuración de UI a Rust sigue pendiente: hoy el tema se persiste en
+  `localStorage` con el adaptador temporal.
 
 ## 4. Rutas de datos
 
@@ -86,20 +91,17 @@ Reglas:
 
 ```text
 <app_data>/
-├── config/
-│   └── config.json
+├── config.json
 ├── sketches/
-│   ├── index.json
 │   └── <uuid>/
-│       ├── sketch.ino
-│       └── meta.json
-├── bin/
+│       ├── <uuid>.ino
+│       └── sketch.json
+├── cli/
 │   └── arduino-cli[.exe]
-├── cache/
-│   └── arduino-cli-1.6.0-<os>-<arch>.tar.gz
-└── logs/
-    ├── kor.log
-    └── kor.log.1
+├── logs/
+│   ├── kor.log
+│   └── kor.log.1
+└── tmp/
 ```
 
 ### `config.json`
@@ -107,9 +109,9 @@ Reglas:
 ```json
 {
   "cli_path": null,
-  "cli_version": "1.6.0",
+  "cli_version": null,
   "theme": "system",
-  "last_fqbn": "arduino:avr:uno",
+  "last_fqbn": null,
   "last_port": null,
   "autosave": true,
   "autosave_delay_ms": 800,
@@ -118,58 +120,56 @@ Reglas:
 }
 ```
 
-### `sketches/index.json`
+### `sketches/<uuid>/sketch.json`
 
 ```json
 {
-  "version": 1,
-  "sketches": [
-    {
-      "id": "3f1c2a9e-8b4d-4c1a-9f2e-1a2b3c4d5e6f",
-      "name": "blink",
-      "updated_at": "2026-11-15T21:00:00Z",
-      "fqbn": "esp32:esp32:esp32doit-devkit-v1"
-    }
-  ]
-}
-```
-
-### `sketches/<uuid>/meta.json`
-
-```json
-{
-  "id": "3f1c2a9e-...",
+  "id": "3f1c2a9e-8b4d-4c1a-9f2e-1a2b3c4d5e6f",
   "name": "blink",
   "fqbn": "esp32:esp32:esp32doit-devkit-v1",
-  "created_at": "2026-11-15T20:00:00Z",
   "updated_at": "2026-11-15T21:00:00Z"
 }
 ```
 
+El `.ino` se guarda como `<uuid>.ino`. Si la carpeta ya contiene otro `.ino`
+creado manualmente, `read_sketch` lo usa como contenido y `save_sketch` escribe
+sobre él. El nombre visible (`name`) no cambia el nombre de la carpeta ni del
+archivo.
+
+No existe `index.json`: `list_sketches` recorre `<app_data>/sketches`, ignora
+carpetas sin un `.ino` válido, ordena por `updated_at` descendente y sintetiza el
+índice en cada llamada.
+
 ## 5. Escritura atómica y recuperación
 
-- Escribir en `*.tmp` en el mismo directorio, `fsync` y `rename`.
-- Al arrancar, si existe un `*.tmp` huérfano, se elimina.
-- Si `index.json` está corrupto, se reconstruye escaneando carpetas `<uuid>/`.
-- Los sketches temporales de compilación van a `<app_data>/cache/build/<job_id>/`
-  y se eliminan al terminar el job (éxito, error o cancelación).
+- Cada archivo se escribe primero en `.<nombre>.<uuid>.tmp` dentro del mismo
+  directorio, con `fsync`, y luego se renombra al destino.
+- En Windows se elimina el destino antes del `rename` (best effort).
+- Si la configuración está corrupta, se renombra a `config.json.bad` y se
+  regenera con los valores por defecto.
+- No hay índice que reconstruir: la lista de sketches se obtiene escaneando las
+  carpetas. Una carpeta sin `.ino` se omite.
+- `tmp/` está reservado para archivos temporales de la app. `arduino-cli` usa su
+  propio directorio de build/cache, no el de la app.
 
 ## 6. Limpieza
 
 | Elemento | Momento | Acción |
 |---|---|---|
-| `cache/build/<job_id>` | fin del job | eliminar |
-| `cache/*.tar.gz` | tras instalar CLI | eliminar |
-| `*.tmp` | arranque y fin de escritura | eliminar |
-| Logs antiguos | al superar N MB | rotar y borrar el más antiguo |
+| `*.tmp` de escritura | fin de la escritura o error | eliminar (best effort) |
+| `config.json.bad` | al regenerar la configuración | conservar para diagnóstico |
+| `kor.log` | al superar 5 MB en el arranque | rotar a `kor.log.1` |
 | Sketches | solo acción del usuario | no se borran automáticamente |
 
 ## 7. Migración desde el estado actual
 
-- El actual `temp_sketch/temp_sketch.ino` no se migra: era efímero y no debía
+- El antiguo `temp_sketch/temp_sketch.ino` no se migra: era efímero y no debía
   estar versionado.
-- Al primer arranque de KOR no hay sketches previos; se crea uno vacío llamado
-  `blink` con una plantilla mínima.
+- Al primer arranque no hay sketches en Rust. La UI restaura (o crea) una pestaña
+  `blink.ino` con un texto de espera; esa pestaña es un borrador hasta que el
+  usuario guarde.
+- Al compilar o subir un borrador se crea o reutiliza el sketch gestionado
+  `KOR Sketch` como almacenamiento temporal.
 - El contenido que el usuario tuviera en el editor de Electron no se puede
   recuperar salvo que se exporte manualmente antes de la migración.
 

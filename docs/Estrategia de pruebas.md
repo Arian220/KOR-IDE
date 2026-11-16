@@ -7,6 +7,10 @@ tags: [kor, pruebas, calidad]
 Guías: `rust-testing`, `e2e-testing`, `security-review`. Cobertura mínima Rust:
 **75 %** (Q56, RNF-05). Sin CI por ahora (ADR-010).
 
+Estado actual (2026-11-16): 22 pruebas unitarias Rust en `services` e
+`infra`; `pnpm typecheck` y `pnpm build` pasan. El frontend todavía no tiene
+Vitest configurado (`pnpm test` es un stub) y E2E Playwright está pendiente.
+
 ## 1. Pirámide
 
 ```text
@@ -24,13 +28,13 @@ Qué cubrir:
 
 | Área | Casos |
 |---|---|
-| Construcción de argumentos | `compile`, `upload`, `board list`, install core; rutas con espacios; FQBN inválido; puerto inválido. |
+| Construcción de argumentos | `compile`, `upload`, `board list`, install core; rutas con espacios; FQBN inválido; puerto inválido; resolución de UUID a ruta absoluta. |
 | Parseo de `board list` | JSON válido, vacío, placa sin FQBN, múltiples placas, JSON malformado. |
-| Parseo de compilación | éxito, error, warnings, memoria, `--format json` y fallback de texto. |
+| Parseo de compilación | éxito, error, warnings, memoria (`text`/`data` en JSON), fallback de texto en inglés y español. |
 | Errores | mapeo a `AppError`, mensajes estables, `kind` correcto. |
-| Rutas | canonicalización, `PathNotAllowed`, traversal (`../`), rutas absolutas. |
-| Configuración | defaults, merge, validación, escritura atómica. |
-| Sketches | crear/leer/guardar/renombrar/eliminar, índice corrupto, huérfanos. |
+| Rutas | resolución de UUID, rutas absolutas, `PathNotAllowed`, traversal (`../`). |
+| Configuración | defaults, merge, validación, escritura atómica, configuración corrupta. |
+| Sketches | crear/leer/guardar/renombrar/eliminar/exportar, `.ino` existente, carpeta sin `.ino`, nombres sanitizados. |
 | Instalador CLI | selección de asset por SO/arch, checksum ok/mismatch, versión no soportada. |
 | Jobs | cancelación, job inexistente, doble compilación. |
 
@@ -63,9 +67,11 @@ fn valida_puerto(#[case] port: &str, #[case] valid: bool) { /* ... */ }
 
 ## 4. Pruebas unitarias Vue
 
-- Vitest + Vue Test Utils + `@pinia/testing`.
-- Cubren stores y composables: `useEditor` (debounce/autosave), `useJobs`
-  (eventos y estados), `useArduino` (flujo y errores), `api/errors` (mensajes).
+- Pendiente configurar Vitest + Vue Test Utils; `pnpm test` aún es un stub.
+- Deberán cubrir composables y componentes: `useEditor` (sesión y borradores),
+  `useSketchFiles` (guardar/guardar como/guardar todo/abrir), `useArduino`
+  (flujo, memoria y errores), `useTheme` y `api/errors`.
+- `parsearMemoria` debe probarse con JSON, texto en inglés y texto en español.
 - Componentes base y de editor con `data-testid`.
 
 ## 5. E2E con Playwright
@@ -80,8 +86,10 @@ fn valida_puerto(#[case] port: &str, #[case] valid: bool) { /* ... */ }
   4. Compilar con error y ver diagnóstico.
   5. Detectar 0 placas → guía; 1 placa → continuar; 2 placas → selector.
   6. Cancelar una compilación.
-  7. Autoguardado y restauración de pestañas.
-  8. Tema claro/oscuro.
+  7. Guardar un borrador (diálogo de nombre), Guardar como y Guardar todo.
+  8. Abrir un sketch guardado y reutilizar la pestaña si ya está abierta.
+  9. Restauración de pestañas, `sketchId` y `dirty` al reiniciar.
+  10. Tema claro/oscuro.
 - Atributos `data-testid` estables; no depender de texto con emojis.
 
 Configuración base del skill `e2e-testing`: HTML + JUnit + JSON reporter, trace
@@ -154,8 +162,8 @@ tests/
 ## 10. Comandos locales
 
 ```bash
-pnpm test                 # unitarias Vue (Vitest)
-pnpm test:e2e             # Playwright
+pnpm test                 # stub; Vitest pendiente de configurar
+# pnpm test:e2e           # pendiente de configurar con Playwright
 cargo test --manifest-path src-tauri/Cargo.toml
 cargo clippy --manifest-path src-tauri/Cargo.toml -- -D warnings
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
@@ -168,9 +176,10 @@ cargo llvm-cov --manifest-path src-tauri/Cargo.toml --fail-under-lines 75
 |---|---|
 | RF-01/02 | Vue Editor + E2E tema |
 | RF-04 | Unit `useEditor` + E2E generación de pines |
-| RF-05/06 | Unit stores + E2E autoguardado |
+| RF-05/06/07 | Unit `useEditor`/`useSketchFiles` + E2E guardado, borradores y restauración |
 | RF-08–11 | Unit parser + E2E selector/guía |
-| RF-12–15 | Unit parser + integración + E2E consola |
+| RF-12–14 | Unit parser + integración + E2E consola |
+| RF-15 | Unit `memory_from_json`/`memory_from_text` + Unit `parsearMemoria` + E2E barras |
 | RF-16–18 | Unit args + integración |
 | RF-19–21 | Unit installer + smoke descarga |
 | RF-22/23 | Unit cores/libraries |

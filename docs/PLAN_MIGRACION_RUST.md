@@ -23,7 +23,7 @@ placas, compilación, memoria y carga mediante `arduino-cli` v1.6.0.
   (RF-25 a RF-28).
 - Descarga automática y verificada de `arduino-cli` (ADR-004).
 - Gestión de cores y librerías (RF-22, RF-23).
-- Múltiples pestañas y autoguardado (RF-05, RF-06).
+- Múltiples pestañas, persistencia de sesión y guardado de sketches (RF-05, RF-06, RF-07).
 - Distribución por releases de GitHub en `.msi`, `.exe`, `.dmg`, `.deb`, `.rpm`
   y `.AppImage` (ADR-008).
 - Sin CI, sin auto-update y sin OTA en esta etapa (ADR-010, RNF-12, RF-24).
@@ -91,7 +91,7 @@ no depende directamente de `window.api` fuera de `src/api`.
 
 - Convertir el diseño actual en componentes (editor, diagrama, consola,
   selector de placa, barras, pestañas) preservando el aspecto (ADR-003).
-- Implementar pestañas, autoguardado y persistencia (RF-04, RF-05, RF-06).
+- Implementar pestañas, persistencia de sesión y guardado (RF-04, RF-05, RF-06).
 - Aplicar `design-system` para tokens y tema claro/oscuro (RF-02, Q35).
 - Aplicar `make-interfaces-feel-better` para hit areas, transiciones y foco.
 - Rediseñar la pantalla principal según `docs/img/pantallaprincipal.svg`:
@@ -125,15 +125,20 @@ funciona con el adaptador Electron.
   plugins `fs`/`shell`, validación de puertos y rutas.
 - Los procesos largos usan `tokio` y `spawn_blocking` para FS (ADR-013).
 
-> **Progreso (2026-11-16):** scaffold `src-tauri` con Tauri 2.12.5, iconos,
+> **Progreso (2026-11-16):** scaffold `src-tauri` con Tauri 2.12.x, iconos,
 > CSP/capabilities, `AppError` y DTOs, `infra::process` sin shell,
 > `services::arduino` (`detect_boards`, `compile`, `upload`, `cancel_job`),
 > configuración y sketches (crear/leer/guardar/renombrar/borrar/exportar).
-> `cargo build`, 19 tests unitarios, `cargo fmt --check` y
-> `cargo clippy --all-targets -- -D warnings` pasan. Smoke Tauri verificado en
-> dev (Vite) y release (assets embebidos): la UI invoca `get_cli_status` por IPC
-> y recibe `available=false` sin `arduino-cli`. Pendiente: `cli_installer`,
-> cores/librerías y extracción opcional de `services/jobs.rs`.
+> Se corrigió la resolución de ruta del sketch: `compile`/`upload` reciben un
+> UUID o ruta absoluta y el backend la resuelve antes de llamar al CLI, por lo
+> que ya no se usa un UUID relativo al cwd. Las barras Flash/SRAM consumen
+> `CompileResult.memory` y el frontend solo usa el parseo de texto como respaldo.
+> El menú Archivo incorpora Nuevo, Abrir sketch, Guardar, Guardar como, Guardar
+> todo y Cerrar pestaña, con borradores (`sketchId = null`) y atajos (`Ctrl+S`,
+> `Ctrl+Shift+S`, `Ctrl+Alt+S`, `Ctrl+O`, `Ctrl+N`, `Ctrl+W`).
+> `cargo fmt --check`, `cargo clippy --all-targets`, 22 tests unitarios,
+> `pnpm typecheck` y `pnpm build` pasan. Pendiente: `cli_installer`,
+> cores/librerías, tests de integración/E2E y verificación en los 3 SO.
 
 **Criterio de salida:** cada comando funciona sin la UI y devuelve errores
 tipados; los tests unitarios de `services` pasan.
@@ -186,10 +191,10 @@ activo, en Windows, macOS y Linux.
 |---|---|---|
 | 0. Documentación | Completada | Baúl en `docs/`; P-01 a P-10 confirmadas. |
 | 1. Workspace | Completada | pnpm; Vite 8 + Vue 3.5 + TS; CodeMirror local; UI extraída a `src/`; adaptador `src/api`; SVG en `src/assets`; `temp_sketch/` retirado; `package-lock.json` eliminado. |
-| 2. UI Vue | Completada | Componentes de acción, pestañas, selector de placa, terminal, memoria, toasts y estado; header tipo VS Code sin barra nativa; autoguardado y cursor con adaptador temporal `localStorage`; temas claro/oscuro/sistema. |
-| 3. Backend Rust/Tauri | En curso | Scaffold Tauri, `AppError`/DTOs, proceso sin shell, boards/compile/upload/cancel, config, CLI y sketches; 19 tests, clippy/fmt y smoke Tauri. Pendiente installer, cores/librerías y `jobs.rs` opcional. |
-| 4. Integración | En curso | `invoke`/`Channel` reales, estado CLI, compilar/subir/cancelar, sketch gestionado y errores tipados. Pendiente diagnósticos con enlace a línea, opciones avanzadas de carga, UI de sketches/cores/librerías y verificación en 3 SO. |
-| 5. Pruebas | Pendiente | Cobertura 75 %. |
+| 2. UI Vue | Completada | Componentes de acción, pestañas, selector de placa, terminal, memoria, toasts y estado; header tipo VS Code sin barra nativa; sesión y cursor con adaptador temporal `localStorage`; temas claro/oscuro/sistema; menú Archivo con guardado y borradores. |
+| 3. Backend Rust/Tauri | En curso | Scaffold Tauri, `AppError`/DTOs, proceso sin shell, boards/compile/upload/cancel, config, CLI y sketches; 22 tests, clippy/fmt. Corregida la ruta absoluta del sketch y el parseo estructurado de memoria. Pendiente installer, cores/librerías y `jobs.rs` opcional. |
+| 4. Integración | En curso | `invoke`/`Channel` reales, estado CLI, compilar/subir/cancelar, sketch gestionado, guardar/guardar como/guardar todo/abrir sketch, borradores y errores tipados. Pendiente diagnósticos con enlace a línea, opciones avanzadas de carga, UI de cores/librerías y verificación en 3 SO. |
+| 5. Pruebas | Pendiente | 22 tests unitarios Rust (argumentos, memoria, rutas, errores). Pendiente configurar Vitest/E2E y alcanzar cobertura 75 %. |
 | 6. Release | Pendiente | Eliminar Electron y publicar. |
 
 ## 7. Orden de entrega
@@ -212,7 +217,7 @@ activo, en Windows, macOS y Linux.
 | macOS bloquea el `.dmg` sin notarizar | Documentar apertura manual; firmar en el futuro (ADR-008). |
 | Diferencia de WebView entre SO | Pruebas de humo en los 3 SO; evitar APIs no portables. |
 | Compilaciones largas congelan la UI | `tokio::process`, streaming y cancelación. |
-| Pérdida de datos en sketches | Escritura atómica, índice reconstruible y autoguardado. |
+| Pérdida de datos en sketches | Escritura atómica, lista reconstruida escaneando carpetas y guardado explícito. |
 | `docs/` fuera de Git | Resuelto: P-08 confirmada, se versiona el baúl. |
 | Umbral de 75 % difícil al inicio | TDD desde `services`; excluir FFI/generado. |
 
@@ -223,7 +228,7 @@ activo, en Windows, macOS y Linux.
 - [ ] Compila con FQBN configurable y muestra salida/diagnósticos.
 - [ ] Cancela compilación y carga.
 - [ ] Descarga `arduino-cli` v1.6.0 verificando SHA-256, con ruta manual.
-- [ ] Guarda y restaura sketches con autoguardado.
+- [ ] Guarda, abre y restaura sketches, incluyendo borradores y «Guardar como».
 - [ ] Tema claro/oscuro y diagrama interactivo conservados.
 - [ ] Funciona en Windows, macOS y Linux.
 - [ ] Cobertura Rust ≥ 75 %.

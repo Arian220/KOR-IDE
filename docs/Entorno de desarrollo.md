@@ -12,7 +12,7 @@ tags: [kor, desarrollo, setup]
 | pnpm | 9+ | Gestor oficial (ADR-002) |
 | Rust | stable | `rustup` + `rustfmt` + `clippy` |
 | Tauri CLI | 2.x | `pnpm tauri` o `cargo tauri` |
-| `arduino-cli` | 1.6.0 | Opcional en desarrollo; la app lo descarga |
+| `arduino-cli` | 1.6.0 | Opcional; la app lo busca en `cli/`, configuración manual y `PATH` |
 | `cargo-llvm-cov` | última | Cobertura |
 | Playwright | última | E2E |
 
@@ -63,9 +63,9 @@ pnpm install
 ```bash
 # Frontend
 pnpm dev              # Vite dev server
-pnpm build            # build de producción
-pnpm test             # Vitest
-pnpm test:e2e         # Playwright
+pnpm build            # typecheck + build de producción
+pnpm test             # stub; Vitest pendiente de configurar
+# pnpm test:e2e       # pendiente de configurar con Playwright
 
 # Tauri (desarrollo)
 pnpm tauri dev
@@ -86,9 +86,9 @@ cargo audit
 
 | Variable | Uso |
 |---|---|
-| `VITE_MOCK_IPC=1` | E2E y desarrollo sin Tauri; simula comandos |
-| `KOR_TEST_ARDUINO_CLI=1` | Habilita integración con CLI real |
-| `KOR_TEST_CLI_PATH` | Ruta al `arduino-cli` de pruebas |
+| `VITE_MOCK_IPC=1` | Planificado para E2E/desarrollo sin Tauri; aún no implementado |
+| `KOR_TEST_ARDUINO_CLI=1` | Planificado para habilitar integración con CLI real |
+| `KOR_TEST_CLI_PATH` | Planificado: ruta al `arduino-cli` de pruebas |
 | `RUST_LOG=debug` | Nivel de log en desarrollo |
 
 ## 6. Flujo de desarrollo
@@ -133,7 +133,7 @@ Ver [[Estructura del proyecto]]. Regla de dependencias:
 
 | Síntoma | Causa probable | Solución |
 |---|---|---|
-| `arduino-cli` no encontrado | No instalado ni en PATH | En fases 1–3 la UI muestra «arduino-cli no instalado»; instalar manualmente o fijar `VITE_ARDUINO_CLI_PATH`. En fase 4+ se descarga desde la app. |
+| `arduino-cli` no encontrado | No está en `cli/`, ni en la ruta manual, ni en `PATH` | Instalarlo (`~/.local/bin`, Homebrew, WinGet, Scoop, Chocolatey), fijar la ruta desde la app o esperar la descarga automática (pendiente). |
 | Permiso denegado en puerto serie (Linux) | Usuario fuera de `dialout` | `sudo usermod -aG dialout $USER` y relogin |
 | WebView no carga en Linux | Falta `webkit2gtk` | Instalar dependencias de la sección 2 |
 | Build Tauri falla en Windows | Sin MSVC Build Tools | Instalar y reiniciar |
@@ -143,10 +143,12 @@ Ver [[Estructura del proyecto]]. Regla de dependencias:
 
 ## 11. Variables de datos en desarrollo
 
-- `app_data_dir()` resuelve a la ruta real del usuario; para pruebas se puede
-  usar `KOR_APP_DATA_DIR` (a definir en implementación) y aislar el entorno.
-- `VITE_ARDUINO_CLI_PATH` (opcional) fija la ruta del CLI en el adaptador
-  Electron de las fases 1–3. Sin ella se usa
-  `C:\ArduinoCLI\arduino-cli.exe` en Windows y `arduino-cli` del `PATH` en
-  macOS/Linux.
+- `app_data_dir()` resuelve a la ruta real del usuario (ver
+  [[Modelo de estado y datos]]). No hay override por variable todavía.
+- El backend Tauri busca `arduino-cli` en este orden: ruta manual de la
+  configuración, `<app_data>/cli/arduino-cli[.exe]` y `PATH`/ubicaciones
+  conocidas por SO (`~/.local/bin`, `~/.cargo/bin`, Homebrew, WinGet, Scoop,
+  Chocolatey, etc.).
+- El adaptador Electron (`VITE_ARDUINO_CLI_PATH`) es temporal y se elimina con
+  Electron en la fase 6.
 - No commitear sketches ni logs generados.

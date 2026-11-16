@@ -81,7 +81,7 @@ Reglas:
 - Validar `port`:
   - Windows: `^COM\d+$`
   - macOS/Linux: `^/dev/(tty|cu)[A-Za-z0-9._-]+$`
-- Las rutas se canonicalizan y deben empezar por `<app_data>/sketches`.
+- Las rutas se resuelven y validan dentro de `<app_data>/sketches`.
 - Cancelación: `child.kill().await` y limpieza; nunca dejar procesos huérfanos.
 - Timeout máximo configurable (p. ej. 10 min) para evitar cuelgues.
 
@@ -96,7 +96,7 @@ Reglas:
 - Verificación: descargar `checksums.txt` oficial, comparar SHA-256 del archivo.
 - Si el checksum no coincide: borrar el archivo, `CliChecksumMismatch`, no
   ejecutar.
-- Instalación atómica en `<app_data>/bin/arduino-cli[.exe]`, permisos `0755` en
+- Instalación atómica en `<app_data>/cli/arduino-cli[.exe]`, permisos `0755` en
   Unix.
 - Sin red y sin CLI: mostrar guía y permitir ruta manual (RF-19).
 - No ejecutar el binario hasta verificar.
@@ -108,7 +108,7 @@ Reglas:
 |---|---|
 | `fqbn` | Regex; debe existir en `board listall` antes de compilar (opcional) |
 | `port` | Regex por SO; proveniente de `board list` o entrada manual validada |
-| `sketch_path` | Canonicalizar; prefijo `app_data/sketches`; sin `..` |
+| `sketch_path` | UUID o ruta absoluta; resolver y validar contra `app_data/sketches`; sin `..` |
 | `sketch.id` | UUID v4 |
 | `sketch.name` | 1–120 caracteres; sanitizar `/\:*?"<>|` y control |
 | `baudrate` | 300–2 000 000 |
@@ -121,11 +121,14 @@ Reglas:
 ## 7. Datos y rutas
 
 - Base: `app_data_dir()` (ADR-005).
-- Sketches en `<app_data>/sketches/<uuid>/`.
-- Caché y build en `<app_data>/cache/`; se limpian al terminar.
+- Sketches en `<app_data>/sketches/<uuid>/` (`<uuid>.ino` + `sketch.json`).
+- CLI gestionado en `<app_data>/cli/`.
+- La caché de compilación la gestiona `arduino-cli`; `<app_data>/tmp/` se reserva
+  para temporales de la app.
 - Logs en `<app_data>/logs/` (ADR-006).
 - Sin escritura junto al ejecutable ni en `/Applications`.
-- Configuración con escritura atómica y validación de esquema.
+- Configuración en `<app_data>/config.json` con escritura atómica y validación
+  de esquema.
 
 ## 8. Secretos y configuración
 
@@ -158,7 +161,7 @@ cargo audit
 - [ ] CSP aplicada y sin `unsafe-eval`; sin cargas remotas.
 - [ ] Sin `webSecurity: false` ni DevTools en release.
 - [ ] Argumentos de proceso separados y validados.
-- [ ] Rutas canonicalizadas dentro de `app_data`.
+- [ ] Rutas resueltas y validadas dentro de `app_data`.
 - [ ] SHA-256 del CLI verificado antes de ejecutar.
 - [ ] `pnpm audit` y `cargo audit` sin hallazgos críticos.
 - [ ] Logs sin secretos ni datos sensibles.

@@ -105,7 +105,7 @@ Guía: skill `security-review` y [[Seguridad]].
 
 - Sin secretos en el repositorio.
 - Validar toda entrada del frontend en Rust.
-- Rutas canonicalizadas dentro de `<app_data>`.
+- Rutas resueltas y validadas dentro de `<app_data>`.
 - Sin cargas remotas en runtime (CSP).
 - Dependencias auditadas con `pnpm audit` y `cargo audit`.
 
