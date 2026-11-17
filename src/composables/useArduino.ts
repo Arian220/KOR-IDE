@@ -19,6 +19,11 @@ export type StatusKind = 'idle' | 'busy' | 'success' | 'error' | 'warning'
 const MAX_CONSOLE_LINES = 5000
 const DEFAULT_FQBN = 'arduino:avr:uno'
 
+export const BOARDS_PREDEFINIDOS: { fqbn: string; nombre: string; svg: string }[] = [
+  { fqbn: 'arduino:avr:uno', nombre: 'Arduino UNO', svg: 'arduino-uno' },
+  { fqbn: 'esp32:esp32:esp32', nombre: 'ESP32 DevKit V1 (ESP32D)', svg: 'esp32d' },
+]
+
 function emptyMemory(): MemoryState {
   return { flash: null, sram: null }
 }
@@ -126,6 +131,11 @@ export function useArduino() {
   }
 
   const configuredFqbn = computed(() => manualFqbn.value ?? fqbnSeleccionado(selectedPort.value))
+
+  const boardActual = computed(() => {
+    const fqbn = configuredFqbn.value
+    return BOARDS_PREDEFINIDOS.find((b) => b.fqbn === fqbn) ?? null
+  })
 
   function setFqbn(fqbn: string | null) {
     const value = fqbn?.trim() ?? ''
@@ -349,6 +359,7 @@ export function useArduino() {
     hasDetected,
     boardError,
     configuredFqbn,
+    boardActual,
     status,
     statusKind,
     memoryVisible,

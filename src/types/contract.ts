@@ -49,3 +49,18 @@ export interface MemoryState {
   flash: MemoryUsage | null
   sram: MemoryUsage | null
 }
+
+export interface CoreInfo {
+  id: string
+  installed: boolean
+  version: string | null
+  latest_version: string | null
+}
+
+export interface LibraryInfo {
+  name: string
+  installed_version: string | null
+  latest_version: string | null
+  author: string | null
+  sentence: string | null
+}

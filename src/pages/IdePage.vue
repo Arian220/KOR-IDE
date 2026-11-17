@@ -7,15 +7,17 @@ import AppPrompt from '@/components/base/AppPrompt.vue'
 import AppToast from '@/components/base/AppToast.vue'
 import BoardInfoDialog from '@/components/board/BoardInfoDialog.vue'
 import BoardSelector from '@/components/board/BoardSelector.vue'
+import BoardTypePickerDialog from '@/components/board/BoardTypePickerDialog.vue'
 import ConsoleOutput from '@/components/console/ConsoleOutput.vue'
 import ArduinoUnoSvg from '@/components/diagram/ArduinoUnoSvg.vue'
+import Esp32dSvg from '@/components/diagram/Esp32dSvg.vue'
 import CodeEditor from '@/components/editor/CodeEditor.vue'
 import EditorTabs from '@/components/editor/EditorTabs.vue'
 import AppMenuBar from '@/components/layout/AppMenuBar.vue'
 import MemoryBars from '@/components/memory/MemoryBars.vue'
 import SketchPicker from '@/components/sketch/SketchPicker.vue'
 import StatusBar from '@/components/status/StatusBar.vue'
-import { useArduino } from '@/composables/useArduino'
+import { useArduino, BOARDS_PREDEFINIDOS } from '@/composables/useArduino'
 import { useDiagram } from '@/composables/useDiagram'
 import { useEditor } from '@/composables/useEditor'
 import { useSketchFiles } from '@/composables/useSketchFiles'
@@ -49,6 +51,7 @@ const {
   hasDetected,
   boardError,
   configuredFqbn,
+  boardActual,
   status,
   statusKind,
   memoryError,
@@ -91,7 +94,6 @@ const saveAsOpen = ref(false)
 const saveAsName = ref('')
 const pickerOpen = ref(false)
 const boardConfigOpen = ref(false)
-const boardConfigValue = ref('')
 const boardInfoOpen = ref(false)
 const aboutOpen = ref(false)
 const licenseOpen = ref(false)
@@ -99,7 +101,7 @@ const terminalVisible = ref(true)
 const updateChecking = ref(false)
 
 const selectedBoard = computed(() => {
-  return boards.value.find((board) => board.port === selectedPort.value) ?? null
+  return boards.value.find((board: { port: string }) => board.port === selectedPort.value) ?? null
 })
 
 const anyDialogOpen = computed(() => {
@@ -167,7 +169,13 @@ const menus = computed<AppMenuDefinition[]>(() => [
         disabled: isBusy.value,
       },
       { separator: true },
-      { id: 'boards.config', label: 'Configurar placa' },
+      ...BOARDS_PREDEFINIDOS.map((b) => ({
+        id: `boards.select.${b.fqbn}`,
+        label: b.nombre,
+        checked: configuredFqbn.value === b.fqbn,
+      })),
+      { separator: true },
+      { id: 'boards.config', label: 'Configurar FQBN' },
       {
         id: 'boards.info',
         label: 'Información de la placa',
@@ -411,6 +419,11 @@ function onCommand(id: string) {
       licenseOpen.value = true
       break
     default:
+      if (id.startsWith('boards.select.')) {
+        const fqbn = id.replace('boards.select.', '')
+        setFqbn(fqbn)
+        showToast(`Placa configurada: ${fqbn}`, 'success')
+      }
       break
   }
 }
@@ -458,19 +471,13 @@ async function onSaveAsConfirm(name: string) {
 }
 
 function openBoardConfig() {
-  boardConfigValue.value = configuredFqbn.value
   boardConfigOpen.value = true
 }
 
 function onBoardConfigConfirm(fqbn: string) {
   boardConfigOpen.value = false
-  const value = fqbn.trim()
-  if (!/^[^:\s]+:[^:\s]+:[^:\s]+(?::.+)?$/.test(value)) {
-    showToast('El FQBN debe tener el formato fabricante:arquitectura:placa.', 'error')
-    return
-  }
-  setFqbn(value)
-  showToast(`FQBN configurado: ${value}`, 'success')
+  setFqbn(fqbn)
+  showToast(`Placa seleccionada: ${fqbn}`, 'success')
 }
 
 async function openDocumentation() {
@@ -655,10 +662,11 @@ function onCancel() {
     <div class="ide__layout">
       <section class="panel panel--left">
         <h2 class="panel__header">
-          Arduino UNO
+          {{ boardActual?.nombre || 'Arduino UNO' }}
           <span class="panel__hint">(Rueda del ratón para zoom)</span>
         </h2>
-        <ArduinoUnoSvg :pin-states="estadoPines" @change="onPinChange" />
+        <ArduinoUnoSvg v-if="boardActual?.svg === 'arduino-uno'" :pin-states="estadoPines" @change="onPinChange" />
+        <Esp32dSvg v-else :pin-states="estadoPines" @change="onPinChange" />
 
         <MemoryBars :flash="memory.flash" :sram="memory.sram" :error="memoryError" />
       </section>
@@ -740,15 +748,10 @@ function onCancel() {
       @refresh="onRefreshSketches"
     />
 
-    <AppPrompt
+    <BoardTypePickerDialog
       :open="boardConfigOpen"
-      title="Configurar placa"
-      label="FQBN de la placa"
-      :initial="boardConfigValue"
-      placeholder="arduino:avr:uno"
-      confirm-label="Aplicar"
-      @confirm="onBoardConfigConfirm"
-      @cancel="boardConfigOpen = false"
+      @select="onBoardConfigConfirm"
+      @close="boardConfigOpen = false"
     />
 
     <BoardInfoDialog
