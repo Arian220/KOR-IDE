@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 1024 1024">
+  <defs>
+    <style>
+      .cls-1{fill:#1e1e1e;stroke:#1e1e1e;stroke-miterlimit:10}
+      .cls-2{fill:#007acc;stroke:#0071b8;stroke-miterlimit:10}
+      .cls-3{fill:#333333;stroke:#333333;stroke-miterlimit:10}
+      .cls-4{fill:#0071b8;stroke:#0071b8;stroke-miterlimit:10}
+    </style>
+  </defs>
+  <title>Artboard 1</title>
+  <g id="Layer_1" data-name="Layer 1">
+    <rect x="0" y="0" width="1024" height="1024" class="cls-1"/>
+    <path d="M239.995 219.622 L239.995 557.143 C239.995 558.05 241.099 558.498 241.731 557.847 L394.381 400.595 L394.381 219.622 Z" class="cls-2"/>
+    <polygon points="239.995,806.112 239.995,594.638 603.47,221.252 822.754,221.252 394.381,637.882 394.381,806.112" class="cls-3"/>
+    <polygon points="548.188,527.417 441.007,634.446 604.399,806.112 827.258,806.112" class="cls-4"/>
+  </g>
+</svg>

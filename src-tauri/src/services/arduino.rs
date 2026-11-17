@@ -1,13 +1,12 @@
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use regex::Regex;
 use serde::Deserialize;
 use tauri::ipc::Channel;
 use tokio_util::sync::CancellationToken;
-use uuid::Uuid;
 
 use crate::infra::process;
 use crate::models::{
@@ -15,7 +14,8 @@ use crate::models::{
     CompileResult, Diagnostic, JobEvent, JobKind, MemoryUsage, Severity, UploadRequest,
     UploadResult,
 };
-use crate::state::{AppState, JobHandle};
+use crate::services::jobs;
+use crate::state::AppState;
 
 pub const REQUIRED_VERSION: &str = "1.6.0";
 
@@ -58,12 +58,18 @@ pub async fn get_cli_status(state: &AppState) -> CliStatus {
             };
             let info = CliInfo {
                 path: path.display().to_string(),
-                version,
+                version: version.clone(),
                 source,
             };
+            let compatible = version_at_least(&version, REQUIRED_VERSION);
+            if !compatible {
+                tracing::warn!(
+                    "arduino-cli {version} es anterior a la versión mínima {REQUIRED_VERSION}"
+                );
+            }
             *state.cli.write().await = Some(info.clone());
             CliStatus {
-                available: true,
+                available: compatible,
                 info: Some(info),
                 required_version: REQUIRED_VERSION.to_string(),
             }
@@ -83,16 +89,25 @@ pub async fn get_cli_status(state: &AppState) -> CliStatus {
 }
 
 pub async fn set_cli_path(state: &AppState, path: Option<String>) -> Result<CliStatus, AppError> {
+    let mut detected_version = None;
     if let Some(value) = &path {
         let candidate = PathBuf::from(value);
         if !candidate.is_file() {
             return Err(AppError::CliNotFound);
         }
+        let version = version_of(&candidate).await?;
+        if !version_at_least(&version, REQUIRED_VERSION) {
+            return Err(AppError::CliUnsupported(version));
+        }
+        detected_version = Some(version);
     }
 
     {
         let mut config = state.config.write().await;
         config.cli_path = path;
+        if detected_version.is_some() {
+            config.cli_version = detected_version;
+        }
         crate::services::config::save(&state.paths, &config)?;
     }
 
@@ -100,7 +115,7 @@ pub async fn set_cli_path(state: &AppState, path: Option<String>) -> Result<CliS
     Ok(get_cli_status(state).await)
 }
 
-async fn version_of(cli: &Path) -> Result<String, AppError> {
+pub(crate) async fn version_of(cli: &Path) -> Result<String, AppError> {
     let output =
         process::run_capture(cli, &["version".to_string()], Duration::from_secs(10)).await?;
 
@@ -122,6 +137,35 @@ async fn version_of(cli: &Path) -> Result<String, AppError> {
     Err(AppError::Internal(
         "no se pudo leer la versión de arduino-cli".to_string(),
     ))
+}
+
+pub fn version_at_least(current: &str, required: &str) -> bool {
+    match (numeric_version(current), numeric_version(required)) {
+        (Some(current), Some(required)) => {
+            let len = current.len().max(required.len());
+            let mut current = current;
+            let mut required = required;
+            current.resize(len, 0);
+            required.resize(len, 0);
+            current >= required
+        }
+        _ => true,
+    }
+}
+
+fn numeric_version(value: &str) -> Option<Vec<u64>> {
+    let parts: Vec<u64> = value
+        .split(|character: char| !character.is_ascii_digit())
+        .filter(|part| !part.is_empty())
+        .take(4)
+        .filter_map(|part| part.parse().ok())
+        .collect();
+
+    if parts.is_empty() {
+        None
+    } else {
+        Some(parts)
+    }
 }
 
 pub async fn detect_boards(state: &AppState) -> Result<Vec<BoardInfo>, AppError> {
@@ -159,20 +203,20 @@ pub async fn compile(
         .to_string_lossy()
         .into_owned();
     let (cli, _) = resolve_cli(state).await?;
-    let (job_id, token) = register_job(state, JobKind::Compile)?;
+    let (job_id, token) = jobs::register(state, JobKind::Compile)?;
 
     let outcome = run_compile(&cli, &request, token, &job_id, &events).await;
-    remove_job(state, &job_id);
+    jobs::remove(state, &job_id);
 
     match &outcome {
-        Ok(_) => send_event(
+        Ok(_) => jobs::send(
             &events,
             JobEvent::Finished {
                 job_id: job_id.clone(),
                 success: true,
             },
         ),
-        Err(err) => send_event(
+        Err(err) => jobs::send(
             &events,
             JobEvent::Failed {
                 job_id: job_id.clone(),
@@ -191,14 +235,14 @@ async fn run_compile(
     job_id: &str,
     events: &Channel<JobEvent>,
 ) -> Result<CompileResult, AppError> {
-    send_event(
+    jobs::send(
         events,
         JobEvent::Started {
             job_id: job_id.to_string(),
             kind: JobKind::Compile,
         },
     );
-    send_event(
+    jobs::send(
         events,
         JobEvent::Progress {
             job_id: job_id.to_string(),
@@ -234,7 +278,7 @@ async fn run_compile(
             .unwrap_or(true);
 
     if success {
-        send_event(
+        jobs::send(
             events,
             JobEvent::Progress {
                 job_id: job_id.to_string(),
@@ -269,20 +313,20 @@ pub async fn upload(
         .to_string_lossy()
         .into_owned();
     let (cli, _) = resolve_cli(state).await?;
-    let (job_id, token) = register_job(state, JobKind::Upload)?;
+    let (job_id, token) = jobs::register(state, JobKind::Upload)?;
 
     let outcome = run_upload(&cli, &request, token, &job_id, &events).await;
-    remove_job(state, &job_id);
+    jobs::remove(state, &job_id);
 
     match &outcome {
-        Ok(_) => send_event(
+        Ok(_) => jobs::send(
             &events,
             JobEvent::Finished {
                 job_id: job_id.clone(),
                 success: true,
             },
         ),
-        Err(err) => send_event(
+        Err(err) => jobs::send(
             &events,
             JobEvent::Failed {
                 job_id: job_id.clone(),
@@ -301,14 +345,14 @@ async fn run_upload(
     job_id: &str,
     events: &Channel<JobEvent>,
 ) -> Result<UploadResult, AppError> {
-    send_event(
+    jobs::send(
         events,
         JobEvent::Started {
             job_id: job_id.to_string(),
             kind: JobKind::Upload,
         },
     );
-    send_event(
+    jobs::send(
         events,
         JobEvent::Progress {
             job_id: job_id.to_string(),
@@ -325,7 +369,7 @@ async fn run_upload(
     let streamed = process::run_streaming(cli, &args, token, job_id, events.clone()).await?;
 
     if streamed.status.success() {
-        send_event(
+        jobs::send(
             events,
             JobEvent::Progress {
                 job_id: job_id.to_string(),
@@ -346,59 +390,6 @@ async fn run_upload(
             stderr: streamed.stderr,
         })
     }
-}
-
-pub fn cancel_job(state: &AppState, job_id: &str) -> Result<bool, AppError> {
-    let jobs = state
-        .jobs
-        .lock()
-        .map_err(|_| AppError::Internal("estado de jobs bloqueado".to_string()))?;
-
-    if let Some(job) = jobs.get(job_id) {
-        job.cancel.cancel();
-        Ok(true)
-    } else {
-        Ok(false)
-    }
-}
-
-fn register_job(state: &AppState, kind: JobKind) -> Result<(String, CancellationToken), AppError> {
-    let mut jobs = state
-        .jobs
-        .lock()
-        .map_err(|_| AppError::Internal("estado de jobs bloqueado".to_string()))?;
-
-    if jobs
-        .values()
-        .any(|job| matches!(job.kind, JobKind::Compile | JobKind::Upload))
-    {
-        return Err(AppError::Internal(
-            "ya hay una compilación o carga en curso".to_string(),
-        ));
-    }
-
-    let job_id = Uuid::new_v4().to_string();
-    let token = CancellationToken::new();
-    jobs.insert(
-        job_id.clone(),
-        JobHandle {
-            kind,
-            cancel: token.clone(),
-            started_at: Instant::now(),
-        },
-    );
-
-    Ok((job_id, token))
-}
-
-fn remove_job(state: &AppState, job_id: &str) {
-    if let Ok(mut jobs) = state.jobs.lock() {
-        jobs.remove(job_id);
-    }
-}
-
-fn send_event(events: &Channel<JobEvent>, event: JobEvent) {
-    let _ = events.send(event);
 }
 
 fn validate_compile_request(
@@ -968,5 +959,16 @@ mod tests {
         assert_eq!(args[0], "compile");
         assert!(args.contains(&"--upload".to_string()));
         assert!(args.contains(&"--build-property".to_string()));
+    }
+
+    #[test]
+    fn compara_versiones_minimas() {
+        assert!(version_at_least("1.6.0", "1.6.0"));
+        assert!(version_at_least("1.6.1", "1.6.0"));
+        assert!(version_at_least("2.0.0", "1.6.0"));
+        assert!(version_at_least("v1.10.0", "1.6.0"));
+        assert!(!version_at_least("1.5.9", "1.6.0"));
+        assert!(!version_at_least("0.9.0", "1.6.0"));
+        assert!(version_at_least("desconocida", "1.6.0"));
     }
 }

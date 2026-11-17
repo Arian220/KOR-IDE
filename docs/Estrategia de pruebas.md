@@ -7,9 +7,12 @@ tags: [kor, pruebas, calidad]
 Guías: `rust-testing`, `e2e-testing`, `security-review`. Cobertura mínima Rust:
 **75 %** (Q56, RNF-05). Sin CI por ahora (ADR-010).
 
-Estado actual (2026-11-16): 22 pruebas unitarias Rust en `services` e
-`infra`; `pnpm typecheck` y `pnpm build` pasan. El frontend todavía no tiene
-Vitest configurado (`pnpm test` es un stub) y E2E Playwright está pendiente.
+Estado actual (2026-11-16): 35 pruebas unitarias Rust en `services` e
+`infra`, más 3 pruebas ignoradas que usan red o el CLI real (`instala_cli_real`,
+`lista_cores_real`, `lista_librerias_real`). `cargo fmt --check`,
+`cargo clippy --all-targets`, `pnpm typecheck` y `pnpm build` pasan. El frontend
+todavía no tiene Vitest configurado (`pnpm test` es un stub) y E2E Playwright
+está pendiente.
 
 ## 1. Pirámide
 

@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "UI y UX.md",
+                "file": "PLAN_MIGRACION_RUST.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "UI y UX"
+              "title": "PLAN_MIGRACION_RUST"
             }
           }
         ]
@@ -79,8 +79,7 @@
               "title": "Marcadores"
             }
           }
-        ],
-        "currentTab": 1
+        ]
       }
     ],
     "direction": "horizontal",
@@ -100,7 +99,7 @@
             "state": {
               "type": "backlink",
               "state": {
-                "file": "UI y UX.md",
+                "file": "PLAN_MIGRACION_RUST.md",
                 "collapseAll": false,
                 "extraContext": false,
                 "sortOrder": "alphabetical",
@@ -119,7 +118,7 @@
             "state": {
               "type": "outgoing-link",
               "state": {
-                "file": "UI y UX.md",
+                "file": "PLAN_MIGRACION_RUST.md",
                 "linksCollapsed": true,
                 "unlinkedCollapsed": true
               },
@@ -162,7 +161,7 @@
             "state": {
               "type": "outline",
               "state": {
-                "file": "UI y UX.md",
+                "file": "PLAN_MIGRACION_RUST.md",
                 "followCursor": false,
                 "showSearch": false,
                 "searchQuery": ""
@@ -177,7 +176,7 @@
             "state": {
               "type": "file-properties",
               "state": {
-                "file": "UI y UX.md"
+                "file": "PLAN_MIGRACION_RUST.md"
               },
               "icon": "lucide-info",
               "title": "Propiedades del archivo"
@@ -204,10 +203,12 @@
   },
   "active": "d3946bdcf500407c",
   "lastOpenFiles": [
+    "Modelo de estado y datos.md",
+    "Convenciones y workflow.md",
+    "UI y UX.md",
     "PLAN_MIGRACION_RUST.md",
     "Inicio.md",
     "PREGUNTAS_ARQUITECTURA.md",
-    "Convenciones y workflow.md",
     "Seguridad.md",
     "img/pantallaprincipal.svg",
     "img",
@@ -216,10 +217,8 @@
     "Entorno de desarrollo.md",
     "Sin título.canvas",
     "Decisiones de arquitectura.md",
-    "Modelo de estado y datos.md",
     "Sin título.md",
     "Sin título.base",
-    "UI y UX.md",
     "Contratos Tauri.md",
     "Estructura del proyecto.md",
     "Estrategia de pruebas.md",

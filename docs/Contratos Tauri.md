@@ -126,9 +126,29 @@ pub struct AppConfig {
 |---|---|---|---|
 | `get_config` | — | `AppConfig` | Lee configuración (crea defaults si no existe). |
 | `save_config` | `config: AppConfig` | `AppConfig` | Valida y persiste de forma atómica. |
-| `set_cli_path` | `path: Option<String>` | `CliInfo` | Fija/limpia ruta manual y valida el binario. |
+| `set_cli_path` | `path: Option<String>` | `CliStatus` | Fija/limpia ruta manual y valida el binario y la versión mínima. |
 | `get_cli_status` | — | `CliStatus` | Indica si hay CLI, versión y origen. |
 | `install_cli` | `channel: Channel<JobEvent>` | `CliInfo` | Descarga, verifica e instala v1.6.0. |
+
+Reglas del instalador:
+
+- Versión fijada: `1.6.0`. Assets desde
+  `https://downloads.arduino.cc/arduino-cli/arduino-cli_1.6.0_<SO>_<ARCH>.<ext>`
+  (mismo origen que el script oficial de Arduino).
+- Checksums desde
+  `https://github.com/arduino/arduino-cli/releases/download/v1.6.0/1.6.0-checksums.txt`.
+  Si el SHA-256 no coincide se borra el temporal y se devuelve
+  `cli_checksum_mismatch`; el binario nunca se ejecuta antes de verificar.
+- Arquitecturas: `x86_64` y `ARM64`. En macOS ARM64 se intenta el asset `64bit`
+  como respaldo si el nativo no está disponible.
+- Emite `started`, `progress` (`descargando`, `verificando checksum`,
+  `extrayendo`, `instalando`, `completado`), `output` y `finished`/`failed`.
+  `job_id` permite llamar a `cancel_job` durante la descarga.
+- Instalación atómica en `<app_data>/cli/arduino-cli[.exe]`; en Unix con permisos
+  `0755`. Tras instalar limpia `cli_path` manual para que se use el binario
+  gestionado y registra la versión en `AppConfig.cli_version`.
+- Versiones manuales `>= 1.6.0` se aceptan (con aviso en logs si son distintas);
+  una versión anterior devuelve `cli_unsupported`.
 
 ```rust
 #[derive(Clone, Debug, serde::Serialize)]
@@ -370,6 +390,24 @@ pub struct LibraryInfo {
     pub sentence: Option<String>,
 }
 ```
+
+Reglas:
+
+- `list_cores` usa `core list --format json`; `installed` se deduce de
+  `installed_version`.
+- `install_core`/`install_library` emiten `JobEvent` y ocupan un job exclusivo:
+  no conviven con `compile`, `upload`, `install_cli` ni otra instalación.
+- `list_libraries(None)` lista las instaladas con `lib list` y deja
+  `latest_version = None`; `list_libraries(Some(query))` usa `lib search`, marca
+  `latest_version` con la última release y mezcla `installed_version` de las
+  librerías instaladas.
+- `install_library` acepta `name` y `version` opcional; construye
+  `name@version` (sin shell) y devuelve la entrada instalada.
+- `uninstall_core`/`uninstall_library` devuelven `true` si el CLI termina bien.
+- Validación: core `^[A-Za-z0-9_-]{1,64}:[A-Za-z0-9_-]{1,64}$`; librería
+  `^[A-Za-z0-9][A-Za-z0-9 ._+@-]{0,127}$`; versión
+  `^[A-Za-z0-9][A-Za-z0-9.+_-]{0,63}$`. Los fallos del CLI se devuelven como
+  `internal` con el `stderr` recortado.
 
 ## 8. Errores en el frontend
 

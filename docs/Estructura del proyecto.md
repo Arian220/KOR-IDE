@@ -45,9 +45,11 @@ loopiIDE/
 │       ├── lib.rs
 │       ├── state.rs
 │       ├── models/                # config, error, board, compile, upload,
-│       │                          # sketch, job
-│       ├── commands/              # boards, cli, compile, config, sketches, upload
-│       ├── services/              # arduino, config, sketches
+│       │                          # sketch, job, catalog
+│       ├── commands/              # boards, cli, catalog, compile, config,
+│       │                          # sketches, upload
+│       ├── services/              # arduino, catalog, cli_installer, config,
+│       │                          # jobs, sketches
 │       └── infra/                 # fs, logging, process
 ├── package.json
 ├── pnpm-lock.yaml

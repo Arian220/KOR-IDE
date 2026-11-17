@@ -136,9 +136,18 @@ funciona con el adaptador Electron.
 > El menú Archivo incorpora Nuevo, Abrir sketch, Guardar, Guardar como, Guardar
 > todo y Cerrar pestaña, con borradores (`sketchId = null`) y atajos (`Ctrl+S`,
 > `Ctrl+Shift+S`, `Ctrl+Alt+S`, `Ctrl+O`, `Ctrl+N`, `Ctrl+W`).
-> `cargo fmt --check`, `cargo clippy --all-targets`, 22 tests unitarios,
-> `pnpm typecheck` y `pnpm build` pasan. Pendiente: `cli_installer`,
-> cores/librerías, tests de integración/E2E y verificación en los 3 SO.
+>
+> La fase 3 se completó: `services::jobs` centraliza el registro, cancelación y
+> eventos de trabajos exclusivos; `services::cli_installer` descarga v1.6.0 desde
+> `downloads.arduino.cc` (mismo origen que el script oficial), verifica SHA-256
+> contra el `1.6.0-checksums.txt` de GitHub, selecciona assets x86_64/ARM64,
+> extrae el binario de `.tar.gz`/`.zip` y lo instala de forma atómica con permisos
+> `0755`. `services::catalog` implementa listar/instalar/desinstalar cores y
+> librerías, con búsqueda remota cuando se pasa `query`. `set_cli_path` y el
+> instalador rechazan versiones anteriores a 1.6.0; una ruta manual más nueva se
+> acepta. `cargo fmt --check`, `cargo clippy --all-targets`, 35 tests unitarios
+> (3 ignorados que usan red/CLI reales) y `pnpm typecheck`/`pnpm build` pasan.
+> Pendiente: tests de integración/E2E y verificación en los 3 SO.
 
 **Criterio de salida:** cada comando funciona sin la UI y devuelve errores
 tipados; los tests unitarios de `services` pasan.
@@ -192,9 +201,9 @@ activo, en Windows, macOS y Linux.
 | 0. Documentación | Completada | Baúl en `docs/`; P-01 a P-10 confirmadas. |
 | 1. Workspace | Completada | pnpm; Vite 8 + Vue 3.5 + TS; CodeMirror local; UI extraída a `src/`; adaptador `src/api`; SVG en `src/assets`; `temp_sketch/` retirado; `package-lock.json` eliminado. |
 | 2. UI Vue | Completada | Componentes de acción, pestañas, selector de placa, terminal, memoria, toasts y estado; header tipo VS Code sin barra nativa; sesión y cursor con adaptador temporal `localStorage`; temas claro/oscuro/sistema; menú Archivo con guardado y borradores. |
-| 3. Backend Rust/Tauri | En curso | Scaffold Tauri, `AppError`/DTOs, proceso sin shell, boards/compile/upload/cancel, config, CLI y sketches; 22 tests, clippy/fmt. Corregida la ruta absoluta del sketch y el parseo estructurado de memoria. Pendiente installer, cores/librerías y `jobs.rs` opcional. |
+| 3. Backend Rust/Tauri | Completada | Scaffold Tauri, `AppError`/DTOs, proceso sin shell, boards/compile/upload/cancel, config, sketches, `jobs`, instalador verificado de CLI y catálogo de cores/librerías; 35 tests, clippy/fmt. Incógnita restante: verificación en los 3 SO (fase 4/5). |
 | 4. Integración | En curso | `invoke`/`Channel` reales, estado CLI, compilar/subir/cancelar, sketch gestionado, guardar/guardar como/guardar todo/abrir sketch, borradores y errores tipados. Pendiente diagnósticos con enlace a línea, opciones avanzadas de carga, UI de cores/librerías y verificación en 3 SO. |
-| 5. Pruebas | Pendiente | 22 tests unitarios Rust (argumentos, memoria, rutas, errores). Pendiente configurar Vitest/E2E y alcanzar cobertura 75 %. |
+| 5. Pruebas | Pendiente | 35 tests unitarios Rust (argumentos, memoria, rutas, errores, instalador, catálogo, jobs) y 3 pruebas ignoradas de red/CLI real. Pendiente configurar Vitest/E2E y alcanzar cobertura 75 %. |
 | 6. Release | Pendiente | Eliminar Electron y publicar. |
 
 ## 7. Orden de entrega

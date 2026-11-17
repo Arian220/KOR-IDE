@@ -2,7 +2,7 @@
 import { computed } from 'vue'
 import AppDialog from '@/components/base/AppDialog.vue'
 import { useAppInfo } from '@/composables/useAppInfo'
-import logoUrl from '@/assets/kor-logo.png'
+import logoUrl from '@/assets/logo.svg'
 
 defineProps<{ open: boolean }>()
 
@@ -69,10 +69,6 @@ const osLabel = computed(() => {
         <div class="about__row">
           <dt>Idioma</dt>
           <dd>{{ os.locale || 'No disponible' }}</dd>
-        </div>
-        <div class="about__row">
-          <dt>Resolución</dt>
-          <dd>{{ os.screen || 'No disponible' }}</dd>
         </div>
       </dl>
     </div>
