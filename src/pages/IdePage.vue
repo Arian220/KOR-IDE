@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { useRouter } from 'vue-router'
 import AboutKorDialog from '@/components/about/AboutKorDialog.vue'
 import LicenseDialog from '@/components/about/LicenseDialog.vue'
 import ActionBar from '@/components/action/ActionBar.vue'
@@ -18,6 +19,7 @@ import MemoryBars from '@/components/memory/MemoryBars.vue'
 import SketchPicker from '@/components/sketch/SketchPicker.vue'
 import StatusBar from '@/components/status/StatusBar.vue'
 import { useArduino, BOARDS_PREDEFINIDOS } from '@/composables/useArduino'
+import { useAppBoot } from '@/composables/useAppBoot'
 import { useDiagram } from '@/composables/useDiagram'
 import { useEditor } from '@/composables/useEditor'
 import { useSketchFiles } from '@/composables/useSketchFiles'
@@ -29,6 +31,7 @@ import type { AppMenuDefinition } from '@/types/app'
 import type { PinFunction } from '@/types/contract'
 
 const { estadoPines, generatedCode, setPin } = useDiagram()
+const router = useRouter()
 const {
   tabs,
   activeTab,
@@ -133,6 +136,8 @@ const menus = computed<AppMenuDefinition[]>(() => [
         shortcut: 'Ctrl+W',
         disabled: tabs.value.length <= 1,
       },
+      { separator: true },
+      { id: 'file.hub', label: 'Volver al Hub' },
       { id: 'file.exit', label: 'Salir' },
     ],
   },
@@ -189,6 +194,8 @@ const menus = computed<AppMenuDefinition[]>(() => [
     items: [
       { id: 'run.compile', label: 'Compilar', shortcut: 'Ctrl+B', disabled: isBusy.value },
       { id: 'run.cancel', label: 'Cancelar operación', disabled: !canCancel.value },
+      { separator: true },
+      { id: 'run.diagnostico', label: 'Diagnóstico completo', shortcut: 'Ctrl+Shift+I' },
       { separator: true },
       { id: 'run.debug', label: 'Depurar (próximamente)', disabled: true },
       { id: 'run.breakpoints', label: 'Puntos de interrupción (próximamente)', disabled: true },
@@ -334,6 +341,9 @@ function onCommand(id: string) {
     case 'file.close':
       closeActiveTab()
       break
+    case 'file.hub':
+      void router.push('/hub')
+      break
     case 'file.exit':
       windowControls.close()
       break
@@ -375,6 +385,9 @@ function onCommand(id: string) {
       break
     case 'run.cancel':
       onCancel()
+      break
+    case 'run.diagnostico':
+      onDiagnostico()
       break
     case 'terminal.open':
       terminalVisible.value = true
@@ -599,7 +612,10 @@ function onShortcut(event: KeyboardEvent) {
   if (event.altKey) return
 
   if (event.shiftKey) {
-    if (key === 'd') {
+    if (key === 'i') {
+      event.preventDefault()
+      onDiagnostico()
+    } else if (key === 'd') {
       event.preventDefault()
       onDetect()
     } else if (key === 'c') {
@@ -640,6 +656,13 @@ onMounted(() => {
 onBeforeUnmount(() => {
   document.removeEventListener('keydown', onShortcut)
 })
+
+function onDiagnostico() {
+  const { runDiagnostico } = useAppBoot()
+  void runDiagnostico().then(() => {
+    showToast('Diagnóstico completo actualizado.', 'success')
+  })
+}
 
 function onDetect() {
   void detectar()

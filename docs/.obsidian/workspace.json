@@ -13,12 +13,12 @@
             "state": {
               "type": "markdown",
               "state": {
-                "file": "PLAN_MIGRACION_RUST.md",
+                "file": "UI y UX.md",
                 "mode": "preview",
                 "source": false
               },
               "icon": "lucide-file",
-              "title": "PLAN_MIGRACION_RUST"
+              "title": "UI y UX"
             }
           }
         ]
@@ -203,23 +203,23 @@
   },
   "active": "d3946bdcf500407c",
   "lastOpenFiles": [
+    "Entorno de desarrollo.md",
+    "Contratos Tauri.md",
+    "Design System.md",
+    "PLAN_MIGRACION_RUST.md",
     "Modelo de estado y datos.md",
     "Convenciones y workflow.md",
     "UI y UX.md",
-    "PLAN_MIGRACION_RUST.md",
     "Inicio.md",
     "PREGUNTAS_ARQUITECTURA.md",
     "Seguridad.md",
     "img/pantallaprincipal.svg",
     "img",
     "Requisitos.md",
-    "Design System.md",
-    "Entorno de desarrollo.md",
     "Sin título.canvas",
     "Decisiones de arquitectura.md",
     "Sin título.md",
     "Sin título.base",
-    "Contratos Tauri.md",
     "Estructura del proyecto.md",
     "Estrategia de pruebas.md",
     "Arquitectura.md",

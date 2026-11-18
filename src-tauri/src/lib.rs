@@ -53,6 +53,7 @@ pub fn run() {
             commands::sketches::rename_sketch,
             commands::sketches::delete_sketch,
             commands::sketches::export_sketch,
+            commands::window::open_main_window,
         ])
         .run(tauri::generate_context!())
         .expect("error al ejecutar KOR");

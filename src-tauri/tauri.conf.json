@@ -12,12 +12,13 @@
   "app": {
     "windows": [
       {
-        "label": "main",
+        "label": "splash",
         "title": "KOR",
-        "width": 1200,
-        "height": 760,
-        "minWidth": 900,
-        "minHeight": 600,
+        "width": 600,
+        "height": 400,
+        "minWidth": 600,
+        "minHeight": 400,
+        "resizable": false,
         "center": true,
         "decorations": false
       }

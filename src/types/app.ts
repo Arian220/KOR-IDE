@@ -35,6 +35,27 @@ export interface SketchSummary {
   fqbn: string | null
 }
 
+/** Tipo de programación de un proyecto. */
+export type ProjectType = 'code' | 'blocky'
+
+/** Proyecto con metadatos extendidos usados en el Hub. */
+export interface SketchProject extends SketchSummary {
+  type: ProjectType
+}
+
+/** Resultado de la carga inicial de la aplicación (Splash → Hub). */
+export interface BootResult {
+  cliAvailable: boolean
+  cliPath: string | null
+  cliError: string | null
+  boards: BoardInfo[]
+  boardError: string | null
+  preferences: KorConfig
+  recentProjects: SketchProject[]
+  updateAvailable: boolean
+  latestVersion: string | null
+}
+
 export interface BoardInfo {
   port: string
   label: string
