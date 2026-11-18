@@ -268,6 +268,13 @@ export const tauriApi: ArduinoApi = {
   },
 }
 
+export const windowApi = {
+  /** Crea la ventana principal (Hub/IDE) y cierra el Splash. */
+  openMain(): Promise<void> {
+    return invoke<void>('open_main_window')
+  },
+}
+
 export const sketchApi = {
   list(): Promise<TauriSketchSummary[]> {
     return invoke<TauriSketchSummary[]>('list_sketches')

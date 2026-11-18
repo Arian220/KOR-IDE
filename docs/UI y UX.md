@@ -19,7 +19,51 @@ Guías: `ui-to-vue`, `vue-patterns`, `make-interfaces-feel-better`,
 4. **Mensajes en español**, claros y accionables.
 5. **Sin sorpresas**: no se añaden funciones no acordadas.
 
-## 2. Estructura de pantalla
+## 2. Flujo de arranque: Splash → Hub → IDE
+
+La aplicación usa `vue-router` con tres rutas: `/` (Splash), `/hub` (Hub) y
+`/ide` (IDE). El arranque usa **dos ventanas nativas** para respetar el tamaño
+de cada pantalla:
+
+| Ventana | Etiqueta | Tamaño | Contenido |
+|---|---|---|---|
+| Splash | `splash` | 600×400 fijo | Pantalla de carga (`/`) |
+| Principal | `main` | 1200×760 (mín. 900×600) | Hub (`/#/hub`) e IDE (`/#/ide`) |
+
+En Wayland el compositor ignora `set_position`/`center`, así que no se
+redimensiona la ventana del splash: al terminar la carga, Rust crea la ventana
+principal con su tamaño final (comando `open_main_window`) y cierra el splash.
+Esto también evita el salto de posición al crecer en X11, Windows y macOS.
+
+### 2.1 Splash
+
+- Fondo con degradado (sin imágenes) y texto: **KOR**, **by Loop-i** y el estado
+  «Cargando proyecto…».
+- No muestra datos ni botones: solo carga en segundo plano y pasa al Hub.
+- Chequeos: `arduino-cli`, placas conectadas, preferencias (`kor.config.v1`),
+  proyectos recientes y actualizaciones (con límite de 2.5 s).
+- El resultado se guarda en `localStorage` (`kor.boot.v1`) para que el Hub lo
+  muestre al instante sin repetir la detección de placas.
+
+### 2.2 Hub
+
+- Header propio mínimo (logotipo, menú **Ejecutar → Diagnóstico completo** y
+  controles de ventana), sin la barra de menús completa del IDE.
+- Panel izquierdo: **Nuevo proyecto** y **Abrir editor**. Aviso de actualización
+  si existe.
+- Panel derecho: proyectos recientes con nombre, placa (`fqbn`), tipo
+  (`Código`/`Blocky`) y fecha.
+- **Nuevo proyecto** abre un modal con nombre, placa y tipo. El tipo *Blocky*
+  aparece deshabilitado como «Próximamente».
+- **Diagnóstico completo** (`Ctrl+Shift+I`) repite los chequeos del splash.
+
+### 2.3 Navegación
+
+- El splash se muestra siempre al abrir la app; al terminar redirige al Hub.
+- Desde el IDE se vuelve al Hub con **Archivo → Volver al Hub**.
+- No existe retorno al splash.
+
+## 3. Estructura de pantalla
 
 Diseño de referencia: `docs/img/pantallaprincipal.svg` (ADR-016).
 
@@ -61,7 +105,7 @@ Diseño de referencia: `docs/img/pantallaprincipal.svg` (ADR-016).
   «Sin placa», «CLI no disponible», el estado de guardado y la sesión
   autoguardada.
 
-### 2.1 Menú principal
+### 3.1 Menú principal
 
 | Menú      | Acciones                                                                                                                                                                                                 |
 | --------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -77,7 +121,7 @@ Los menús se cierran con `Escape` o al hacer clic fuera. Las acciones no
 disponibles se muestran deshabilitadas. Los atajos se muestran en una columna a
 la derecha de cada acción.
 
-### 2.2 Información de KOR
+### 3.2 Información de KOR
 
 La acción **Acerca de → Información de KOR** (`F1`) abre un diálogo modal
 centrado con:
@@ -93,9 +137,9 @@ centrado con:
 Los datos de la aplicación viven en `src/config/appInfo.ts`; los del sistema se
 deducen en el webview y no se envían a ningún servicio.
 
-## 3. Flujos
+## 4. Flujos
 
-### 3.1 Compilar
+### 4.1 Compilar
 
 1. Usuario pulsa **Compilar**.
 2. Las pestañas guardadas se sincronizan con su sketch; los borradores usan el
@@ -109,7 +153,7 @@ deducen en el webview y no se envían a ningún servicio.
 La memoria Flash/SRAM se toma de `CompileResult.memory` (JSON estructurado del
 CLI); si no está disponible, se usa el parseo de texto como respaldo.
 
-### 3.2 Subir
+### 4.2 Subir
 
 1. Pulsa **Subir**.
 2. Se detectan placas (RF-08).
@@ -117,19 +161,19 @@ CLI); si no está disponible, se usa el parseo de texto como respaldo.
 4. Se muestra «Subiendo a <puerto>…».
 5. Resultado: éxito o error con salida completa.
 
-### 3.3 Cancelar
+### 4.3 Cancelar
 
 - Durante un job aparece **Cancelar**.
 - Al pulsar: se solicita `cancel_job`, se muestra «Cancelando…», y al final
   «Operación cancelada».
 
-### 3.4 Detectar placas
+### 4.4 Detectar placas
 
 - Botón explícito; no sondeo automático (RF-08).
 - Muestra puerto, modelo, FQBN y VID/PID cuando exista (RF-09).
 - Sin placa: guía con pasos (cable, drivers, permisos, CLI).
 
-### 3.5 Archivos y sketches
+### 4.5 Archivos y sketches
 
 - **Nuevo archivo**: crea una pestaña borrador (`sketchId = null`) con nombre
   temporal y contenido vacío.
@@ -149,7 +193,7 @@ CLI); si no está disponible, se usa el parseo de texto como respaldo.
   estado `dirty`) desde `localStorage`; el contenido definitivo vive en Rust
   solo cuando el usuario guarda.
 
-## 4. Estados de UI
+## 5. Estados de UI
 
 | Estado | Elemento | Comportamiento |
 |---|---|---|
@@ -164,7 +208,7 @@ CLI); si no está disponible, se usa el parseo de texto como respaldo.
 | Cambios sin guardar | pestaña | Indicador ● y título «Cambios sin guardar» |
 | Tema | raíz | Claro/oscuro/sistema |
 
-## 5. Editor
+## 6. Editor
 
 - CodeMirror 6 local (`codemirror`, `@codemirror/lang-cpp`,
   `@codemirror/theme-one-dark`).
@@ -174,7 +218,7 @@ CLI); si no está disponible, se usa el parseo de texto como respaldo.
   pestañas y cursor; el guardado en sketches de Rust es explícito mediante
   Archivo → Guardar / Guardar como / Guardar todo.
 
-## 6. Terminal
+## 7. Terminal
 
 - Ocupa el pie del panel del editor y puede abrirse o cerrarse desde el menú
   Terminal (Ctrl + \`); muestra un mensaje de espera mientras no hay actividad.
@@ -186,14 +230,14 @@ CLI); si no está disponible, se usa el parseo de texto como respaldo.
   desde el menú Terminal.
 - Los diagnósticos se muestran además como lista con enlace al editor.
 
-## 7. Temas y tokens
+## 8. Temas y tokens
 
 - Tokens en [[Design System]].
 - Tema claro/oscuro/sistema persistido en configuración.
 - Contraste mínimo 4.5:1 para texto normal.
 - Colores de estado: éxito verde, error rojo, advertencia ámbar.
 
-## 8. Accesibilidad
+## 9. Accesibilidad
 
 No es requisito en esta versión (Q37). Aun así:
 
@@ -201,13 +245,13 @@ No es requisito en esta versión (Q37). Aun así:
 - Foco visible.
 - No depender solo del color para estados.
 
-## 9. Responsive
+## 10. Responsive
 
 - Solo escritorio (Q9). La ventana mínima debe mantener el editor usable
   (p. ej. 900×600).
 - Paneles redimensionables si el diseño actual lo permite; si no, se conserva.
 
-## 10. Microinteracciones
+## 11. Microinteracciones
 
 Aplicar `make-interfaces-feel-better`:
 
@@ -217,7 +261,7 @@ Aplicar `make-interfaces-feel-better`:
 - `font-variant-numeric: tabular-nums` en memoria/porcentajes.
 - Sombras y bordes con propósito.
 
-## 11. Componentes principales
+## 12. Componentes principales
 
 | Componente | Responsabilidad |
 |---|---|
@@ -240,10 +284,31 @@ Aplicar `make-interfaces-feel-better`:
 | `useSketchFiles.ts` | Guardar, guardar como, guardar todo, listar y abrir sketches |
 | `useAppInfo.ts` | Metadatos de la app y datos del sistema operativo |
 | `useWindowControls.ts` | Puente Tauri/Electron para minimizar, maximizar y cerrar |
+| `SplashPage.vue` | Pantalla de carga con degradado; ejecuta el arranque y abre la ventana principal. |
+| `HubPage.vue` | Pantalla principal con acciones y proyectos recientes. |
+| `HubMenuBar.vue` | Header mínimo del Hub y diagnóstico completo. |
+| `router/index.ts` | Rutas `/`, `/hub` e `/ide` con hash history. |
+| `useAppBoot.ts` | Orquesta la carga inicial y comparte el resultado con el Hub (`kor.boot.v1`). |
+| `useMainWindow.ts` | Invoca `open_main_window` o usa el router como respaldo. |
+| `useUpdates.ts` | Comprueba la última release de GitHub. |
 
-## 12. Textos
+## 13. Textos
 
 - Español neutro, sin tecnicismos innecesarios.
 - Errores: qué pasó + qué hacer.
 - Evitar emojis en la UI nueva salvo que ya existan y se conserven por
   continuidad.
+
+Textos fijos de arranque y Hub:
+
+| Contexto | Texto |
+|---|---|
+| Splash (título) | `KOR` |
+| Splash (subtítulo) | `by Loop-i` |
+| Splash (estado) | `Cargando proyecto…` |
+| Hub (acción) | `Nuevo proyecto` / `Abrir editor` |
+| Hub (panel) | `Proyectos recientes` / `No tienes proyectos recientes todavía.` |
+| Modal | `Configurar nuevo proyecto`, `Nombre del proyecto`, `Placa`, `Tipo de proyecto`, `Finalizar` |
+| Tipo no disponible | `Blocky (Próximamente)` |
+| Menú | `Diagnóstico completo` |
+| IDE | `Volver al Hub` |

@@ -7,6 +7,10 @@ tags: [kor, glosario]
 | Término | Definición |
 |---|---|
 | **KOR** | Nombre de la aplicación (antes «Mi IDE Arduino» / Loopi IDE). |
+| **Splash** | Pantalla de carga que se muestra al abrir KOR; ejecuta los chequeos iniciales y abre el Hub. |
+| **Hub** | Pantalla de inicio de trabajo con acciones y proyectos recientes; sustituye a la apertura directa del editor. |
+| **Ventana principal** | Ventana nativa `main` (Hub/IDE); se crea al terminar el Splash con tamaño 1200×760. |
+| **Diagnóstico completo** | Acción (`Ctrl+Shift+I`) que repite los chequeos del Splash desde el Hub o el IDE. |
 | **FQBN** | Fully Qualified Board Name; identifica placa y core, p. ej. `arduino:avr:uno`. |
 | **Sketch** | Proyecto de Arduino; carpeta con un `.ino` del mismo nombre. |
 | **Borrador** | Pestaña abierta con `sketchId = null`; aún no se ha guardado como sketch en Rust. |

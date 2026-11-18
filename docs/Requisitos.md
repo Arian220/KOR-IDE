@@ -74,6 +74,18 @@ estable para trazabilidad con [[Estrategia de pruebas]] y [[Contratos Tauri]].
 | RF-31 | Los errores se muestran de forma explícita; nunca se reporta éxito si el proceso falló. | Plan original |
 | RF-32 | Funcionamiento híbrido: las funciones locales operan sin internet; las descargas de CLI/cores requieren red. | Q5 |
 
+### 2.5 Arranque y Hub
+
+| ID | Requisito | Origen |
+|---|---|---|
+| RF-33 | Al abrir la aplicación se muestra siempre una pantalla **Splash** con degradado, el título «KOR», «by Loop-i» y el estado «Cargando proyecto…»; al terminar pasa automáticamente al Hub. | Nuevo |
+| RF-34 | El Splash ejecuta cinco comprobaciones: disponibilidad de `arduino-cli`, placas conectadas, preferencias del usuario, proyectos recientes y actualizaciones. | Nuevo |
+| RF-35 | El **Hub** muestra un panel de acciones (nuevo proyecto, abrir editor) y un panel de proyectos recientes con nombre, placa (`fqbn`), tipo y fecha. | Nuevo |
+| RF-36 | «Nuevo proyecto» abre un modal con nombre, placa y tipo de proyecto; el tipo **Blocky** aparece deshabilitado como «Próximamente». | Nuevo |
+| RF-37 | El Hub tiene un header mínimo con el menú **Ejecutar → Diagnóstico completo** (`Ctrl+Shift+I`), que repite las comprobaciones del arranque. | Nuevo |
+| RF-38 | Desde el IDE se puede volver al Hub, pero nunca al Splash. | Nuevo |
+| RF-39 | El Splash y la ventana principal usan ventanas nativas separadas con tamaños propios: 600×400 para el Splash y 1200×760 (mínimo 900×600) para Hub/IDE. | Nuevo |
+
 ## 3. Requisitos no funcionales (RNF)
 
 | ID | Requisito | Origen |

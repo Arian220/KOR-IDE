@@ -24,14 +24,16 @@ loopiIDE/
 │   │   ├── console/               # ConsoleOutput.vue
 │   │   ├── diagram/               # ArduinoUnoSvg.vue, pinCoordinates.ts
 │   │   ├── editor/                # CodeEditor.vue, EditorTabs.vue
-│   │   ├── layout/                # AppMenuBar.vue
+│   │   ├── layout/                # AppMenuBar.vue, HubMenuBar.vue
 │   │   ├── memory/                # MemoryBars.vue
 │   │   ├── sketch/                # SketchPicker.vue
 │   │   └── status/                # StatusBar.vue
-│   ├── composables/               # useArduino, useDiagram, useEditor,
-│   │                              # useSketchFiles, useTheme, useToast,
+│   ├── composables/               # useAppBoot, useArduino, useDiagram,
+│   │                              # useEditor, useMainWindow, useSketchFiles,
+│   │                              # useTheme, useToast, useUpdates,
 │   │                              # useWindowControls
-│   ├── pages/IdePage.vue
+│   ├── pages/                     # SplashPage.vue, HubPage.vue, IdePage.vue
+│   ├── router/index.ts            # rutas /, /hub, /ide (hash history)
 │   ├── types/                     # app.ts, contract.ts, legacy.d.ts, tauri.ts
 │   ├── utils/                     # codegen.ts, memory.ts
 │   └── assets/                    # arduino-uno.svg, styles/
@@ -47,7 +49,7 @@ loopiIDE/
 │       ├── models/                # config, error, board, compile, upload,
 │       │                          # sketch, job, catalog
 │       ├── commands/              # boards, cli, catalog, compile, config,
-│       │                          # sketches, upload
+│       │                          # sketches, upload, window
 │       ├── services/              # arduino, catalog, cli_installer, config,
 │       │                          # jobs, sketches
 │       └── infra/                 # fs, logging, process
@@ -65,6 +67,11 @@ viven en `<app_data>` (ver [[Modelo de estado y datos]]).
 Los nuevos componentes de archivos (`AppDialog`, `AppPrompt`, `SketchPicker` y
 `useSketchFiles`) implementan Guardar, Guardar como, Guardar todo y Abrir
 sketch sin añadir stores todavía.
+
+La navegación usa `vue-router` con hash history (`/`, `/hub`, `/ide`). El
+arranque usa dos ventanas nativas: `splash` (600×400) definida en
+`tauri.conf.json` y `main` (1200×760) creada por el comando `open_main_window`
+al terminar la carga (ver [[UI y UX]] y [[Contratos Tauri]]).
 
 ## 2. Estado objetivo
 
@@ -93,15 +100,20 @@ kor/
 │   │   ├── status/                # StatusBar.vue
 │   │   └── sketch/                # SketchList.vue
 │   ├── composables/
+│   │   ├── useAppBoot.ts
 │   │   ├── useArduino.ts
 │   │   ├── useDiagram.ts
 │   │   ├── useEditor.ts
 │   │   ├── useJobs.ts
+│   │   ├── useMainWindow.ts
 │   │   ├── useSketches.ts
 │   │   ├── useTheme.ts
 │   │   ├── useToast.ts
+│   │   ├── useUpdates.ts
 │   │   ├── useWindowControls.ts
 │   │   └── useConfig.ts
+│   ├── router/
+│   │   └── index.ts               # /, /hub, /ide con hash history
 │   ├── stores/
 │   │   ├── config.ts
 │   │   ├── editor.ts
@@ -122,6 +134,8 @@ kor/
 │   │       ├── tokens.css
 │   │       └── main.css
 │   └── pages/
+│       ├── SplashPage.vue
+│       ├── HubPage.vue
 │       └── IdePage.vue
 ├── src-tauri/
 │   ├── Cargo.toml
@@ -151,7 +165,8 @@ kor/
 │       │   ├── compile.rs
 │       │   ├── upload.rs
 │       │   ├── sketches.rs
-│       │   └── cores.rs
+│       │   ├── catalog.rs
+│       │   └── window.rs
 │       ├── services/
 │       │   ├── mod.rs
 │       │   ├── arduino.rs

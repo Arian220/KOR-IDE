@@ -62,6 +62,9 @@ La UI usa Composition API con composables; todavía no hay stores Pinia.
 | `useArduino` | estado del CLI, placas, puerto seleccionado, job, consola y memoria | efímero |
 | `useTheme` | tema claro/oscuro/sistema | `localStorage` (`kor.config.v1`, adaptador temporal) |
 | `useToast` | avisos no bloqueantes | efímero |
+| `useAppBoot` | resultado del arranque: CLI, placas, preferencias, proyectos recientes y actualización | `localStorage` (`kor.boot.v1`) |
+| `useUpdates` | estado de la comprobación de la última release de GitHub | efímero |
+| `useMainWindow` | apertura de la ventana principal (`open_main_window`) | — |
 
 Reglas:
 
@@ -78,6 +81,35 @@ Reglas:
 - Rust es dueño de configuración, sketches, jobs y rutas. La migración completa
   de la configuración de UI a Rust sigue pendiente: hoy el tema se persiste en
   `localStorage` con el adaptador temporal.
+
+### 3.1 Estado de arranque y caché entre ventanas
+
+El Splash y la ventana principal (`main`) son contextos distintos del WebView, así
+que `useAppBoot` comparte el resultado del arranque mediante `localStorage`:
+
+```text
+kor.boot.v1
+{
+  "cliAvailable": boolean,
+  "cliPath": string | null,
+  "cliError": string | null,
+  "boards": BoardInfo[],
+  "boardError": string | null,
+  "preferences": AppConfig,
+  "recentProjects": SketchProject[],
+  "updateAvailable": boolean,
+  "latestVersion": string | null
+}
+```
+
+- El Splash escribe la caché al terminar `loadBootResult()` y luego invoca
+  `open_main_window`.
+- El Hub lee la caché al montar y pinta el estado sin repetir la detección de
+  placas ni la lectura de sketches.
+- `runDiagnostico()` invalida la promesa y vuelve a ejecutar los chequeos,
+  sobrescribiendo `kor.boot.v1`.
+- La caché es solo de arranque: no sustituye a Rust como fuente de verdad de
+  configuración y sketches.
 
 ## 4. Rutas de datos
 

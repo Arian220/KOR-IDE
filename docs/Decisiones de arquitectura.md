@@ -232,6 +232,25 @@ responsable humano el 2026-11-15 y se incorporan al cuerpo de decisiones.
   independiente del cwd. La resolución está cubierta por
   `resuelve_la_ruta_del_sketch_antes_de_compilar`.
 
+## ADR-020 — Splash y Hub con dos ventanas nativas y `vue-router`
+
+- **Estado:** Aceptada
+- **Contexto:** se pide una pantalla de carga tipo Photoshop (Splash) y una
+  pantalla Hub previa al IDE. El Splash es pequeño (600×400) y el Hub/IDE
+  necesita 1200×760. En Wayland (GNOME) el compositor ignora `set_position` y
+  `center`, así que redimensionar la ventana del Splash deja la ventana anclada
+  a su esquina superior izquierda y el Hub aparece desplazado.
+- **Decisión:** usar `vue-router` con hash history (`/`, `/hub`, `/ide`) y dos
+  ventanas Tauri: `splash` (600×400, definida en `tauri.conf.json`) y `main`
+  (1200×760, mínimo 900×600) creada al terminar la carga por el comando Rust
+  `open_main_window`. El resultado del arranque se comparte por `localStorage`
+  (`kor.boot.v1`).
+- **Consecuencias:** el Hub aparece centrado con su tamaño final en Wayland y en
+  el resto de SO. Rust pasa a gestionar la creación de ventanas y las
+  capabilities incluyen ambas etiquetas. El Splash solo se muestra al abrir la
+  app y no se puede volver a él. La caché de arranque es de un solo uso y no
+  sustituye a Rust como fuente de verdad.
+
 ---
 
 ## Decisiones confirmadas (antes pendientes)

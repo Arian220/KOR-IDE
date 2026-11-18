@@ -426,7 +426,44 @@ sugerida:
 | `path_not_allowed` | «Ruta no permitida.» | — |
 | `io` / `internal` | «Error interno.» | Registrar y mostrar detalle |
 
-## 9. Compatibilidad con Electron (transitorio)
+## 9. Ventanas
+
+La aplicación usa dos ventanas nativas para que cada pantalla tenga su tamaño
+sin depender del compositor:
+
+| Etiqueta | Tamaño | Contenido | Creada por |
+|---|---|---|---|
+| `splash` | 600×400 fijo (no redimensionable) | `/#/` (Splash) | `tauri.conf.json` |
+| `main` | 1200×760 (mín. 900×600) | `/#/hub` y `/#/ide` | `open_main_window` |
+
+### `open_main_window`
+
+| Campo | Valor |
+|---|---|
+| Entrada | — |
+| Salida | `()` |
+| Errores | `internal` si el WebView no se puede crear/mostrar |
+| Idempotente | Sí: si `main` ya existe, la muestra y le da foco |
+
+Comportamiento:
+
+1. Si la ventana `main` no existe, la crea con
+   `WebviewUrl::App("index.html#/hub")`, tamaño 1200×760, mínimo 900×600,
+   `decorations: false` y `center()`.
+2. Si ya existe, la muestra y la enfoca.
+3. Cierra la ventana `splash` (el fallo al cerrarla se ignora).
+
+Notas:
+
+- `capabilities/default.json` incluye las ventanas `["splash", "main"]` para que
+  ambas puedan usar los permisos de núcleo (arrastre, minimizar, maximizar,
+  cerrar).
+- En Wayland el compositor ignora `set_position`/`center`, por lo que el Hub no
+  redimensiona el splash: nace como ventana nueva ya centrada.
+- `index.html#/hub` es necesario porque Tauri carga un archivo local y la SPA usa
+  hash history.
+
+## 10. Compatibilidad con Electron (transitorio)
 
 Mientras exista el build dual, `api/` detecta el entorno:
 

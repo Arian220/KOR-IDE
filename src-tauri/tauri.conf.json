@@ -14,10 +14,10 @@
       {
         "label": "splash",
         "title": "KOR",
-        "width": 600,
-        "height": 400,
-        "minWidth": 600,
-        "minHeight": 400,
+        "width": 500,
+        "height": 300,
+        "minWidth": 500,
+        "minHeight": 300,
         "resizable": false,
         "center": true,
         "decorations": false

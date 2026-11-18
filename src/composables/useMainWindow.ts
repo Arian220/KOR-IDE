@@ -1,4 +1,5 @@
 import { useRouter } from 'vue-router'
+import { windowApi } from '@/api'
 
 function isTauri(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
@@ -15,8 +16,7 @@ export function useMainWindow() {
   async function openMainWindow(): Promise<void> {
     if (isTauri()) {
       try {
-        const { invoke } = await import('@tauri-apps/api/core')
-        await invoke('open_main_window')
+        await windowApi.openMain()
         return
       } catch (error) {
         console.warn('No se pudo abrir la ventana principal, usando el router:', error)

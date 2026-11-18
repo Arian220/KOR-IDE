@@ -57,21 +57,29 @@ invoca comandos Tauri y escucha eventos; no se habilitan plugins de `fs` ni
 
 ```text
 src/
-├── pages/         # composición de pantalla del IDE
+├── pages/         # Splash, Hub e IDE
+├── router/        # /, /hub, /ide con hash history
 ├── components/    # editor, consola, selector de placa, diagrama SVG, barras,
 │                  # diálogos y selector de sketches
-├── composables/   # useArduino, useEditor, useSketchFiles, useDiagram,
-│                  # useTheme, useToast, useWindowControls
+├── composables/   # useAppBoot, useArduino, useEditor, useMainWindow,
+│                  # useSketchFiles, useDiagram, useTheme, useToast, useUpdates,
+│                  # useWindowControls
 ├── api/           # cliente de comandos Tauri (adaptador único)
 ├── types/         # tipos espejo de los contratos Rust
 └── assets/        # estilos, tokens, iconos
 ```
 
+- **`router/`** define las rutas `/` (Splash), `/hub` (Hub) e `/ide` (IDE) con
+  `createWebHashHistory`, necesario para que el WebView cargue rutas internas.
 - **`api/`** es el único módulo que importa `@tauri-apps/api`. El resto nunca
   llama `invoke` directamente.
 - **Composition API con composables** gestiona el estado de la UI; los stores
   Pinia planificados todavía no existen.
 - **CodeMirror** se instala por pnpm; no se usan CDN ni `esm.sh`.
+- El arranque usa **dos ventanas nativas**: `splash` (600×400, fija) y `main`
+  (1200×760, mínimo 900×600). En Wayland el compositor ignora
+  `set_position`/`center`, por lo que no se redimensiona el splash: Rust crea la
+  ventana principal con su tamaño final y cierra el splash.
 
 Detalle en [[Estructura del proyecto]] y [[UI y UX]].
 
@@ -81,7 +89,8 @@ Detalle en [[Estructura del proyecto]] y [[UI y UX]].
 src-tauri/src/
 ├── main.rs            # entrypoint del binario
 ├── lib.rs             # setup Tauri, estado y registro de comandos
-├── commands/          # capa IPC: boards, cli, compile, config, sketches, upload
+├── commands/          # capa IPC: boards, cli, compile, config, sketches,
+│                      # upload, window
 ├── services/          # lógica de dominio (arduino, config, sketches)
 ├── infra/             # procesos, archivos, logging
 ├── models/            # tipos serializables (DTO) y enums de error
@@ -151,6 +160,30 @@ Vue (Subir) → detectBoards → selección de placa/puerto
   `localStorage` (~800 ms) para restaurarse al abrir la app. El contenido
   definitivo vive en `<app_data>/sketches` solo tras guardar.
 - Al compilar o subir un borrador se usa el sketch gestionado `KOR Sketch`.
+
+### 5.5 Arranque: Splash → Hub → IDE
+
+```text
+App inicia ventana splash (600×400)
+  → SplashPage monta useAppBoot().ensureBoot()
+      ├─ verificar arduino-cli
+      ├─ detectar placas conectadas
+      ├─ cargar preferencias (kor.config.v1)
+      ├─ listar proyectos recientes
+      └─ comprobar actualizaciones (máx. 2.5 s)
+  → resultado en localStorage (kor.boot.v1)
+  → invoke("open_main_window")
+      ├─ crea ventana main (1200×760) con index.html#/hub
+      └─ cierra ventana splash
+  → Hub lee kor.boot.v1 y muestra el estado sin repetir chequeos
+  → Hub → /ide al abrir o crear un proyecto
+```
+
+- El splash se muestra **siempre** al abrir la aplicación y no se puede volver a
+  él.
+- **Diagnóstico completo** (`Ctrl+Shift+I`, menú `Ejecutar`) vuelve a ejecutar
+  los chequeos desde el Hub o el IDE.
+- Desde el IDE se vuelve al Hub con **Archivo → Volver al Hub** (`/hub`).
 
 ## 6. Gestión de procesos y concurrencia
 
